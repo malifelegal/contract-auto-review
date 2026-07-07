@@ -11,15 +11,31 @@ meta:
   type_name: 공통
   detect_keywords: []
   modules: []
-checkpoints:
+checks:
   - id: CMN-01
-    title: 손해배상
+    check: 손해배상 조항이 있는가
     severity: 필수
+    norm_type: 실무
+    basis: practice
     triggers:
       keywords: [손해배상, 배상]
     absence_check: true
-    guidance: 손해배상 조항의 상한·범위를 확인해야 함
-    legal_basis: []
+    sources: []
+    note: ""
+  - id: CMN-02
+    check: 손해배상 범위를 민법 제393조에 맞게 통상손해로 한정하는가
+    severity: 참고
+    norm_type: 강행
+    basis: statute
+    triggers:
+      keywords: [통상손해]
+    absence_check: false
+    sources:
+      - law: 민법
+        article: 제393조
+        clause: 제1항
+        quote: 통상의 손해를 그 한도로 한다
+        verified: false
 """
 
 VALID_TYPE = """\
@@ -33,19 +49,21 @@ meta:
       always_on: false
       screening_question: 개인정보 처리가 포함되는가?
       suggest_keywords: [개인정보]
-checkpoints:
+checks:
   - id: OUT-01
-    title: 재위탁 제한
+    check: 재위탁 시 사전 동의를 받도록 규정하는가
     severity: 필수
     module: M-PRIV
+    norm_type: 강행
+    basis: statute
     triggers:
       keywords: [재위탁]
     absence_check: true
-    guidance: 재위탁 시 사전 동의 요건을 명시해야 함
-    legal_basis:
+    sources:
       - law: 테스트법
         article: 제3조
         verified: true
+        quote: 사전 동의를 받아야 한다
 """
 
 

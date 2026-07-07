@@ -6,7 +6,46 @@ def test_load_valid(knowledge_dir):
     k = load_knowledge(knowledge_dir)
     assert k["common"]["meta"]["type_id"] == "common"
     assert len(k["types"]) == 1
-    assert k["types"][0]["checkpoints"][0]["id"] == "OUT-01"
+    assert k["types"][0]["checks"][0]["id"] == "OUT-01"
+
+
+def test_checkpoints_key_rejected(knowledge_dir):
+    bad = (knowledge_dir / "common.yaml").read_text().replace("checks:", "checkpoints:", 1)
+    (knowledge_dir / "common.yaml").write_text(bad)
+    with pytest.raises(ValidationError, match="checkpoints"):
+        load_knowledge(knowledge_dir)
+
+
+def test_guidance_field_rejected(knowledge_dir):
+    bad = (knowledge_dir / "common.yaml").read_text().replace(
+        "    sources: []\n", "    sources: []\n    guidance: 폐지된 필드임\n"
+    )
+    (knowledge_dir / "common.yaml").write_text(bad)
+    with pytest.raises(ValidationError, match="guidance"):
+        load_knowledge(knowledge_dir)
+
+
+def test_statute_missing_quote_rejected(knowledge_dir):
+    bad = (knowledge_dir / "types" / "outsourcing.yaml").read_text().replace(
+        "        quote: 사전 동의를 받아야 한다\n", ""
+    )
+    (knowledge_dir / "types" / "outsourcing.yaml").write_text(bad)
+    with pytest.raises(ValidationError, match="quote"):
+        load_knowledge(knowledge_dir)
+
+
+def test_bad_norm_type_rejected(knowledge_dir):
+    bad = (knowledge_dir / "common.yaml").read_text().replace("norm_type: 실무", "norm_type: 없음")
+    (knowledge_dir / "common.yaml").write_text(bad)
+    with pytest.raises(ValidationError, match="norm_type"):
+        load_knowledge(knowledge_dir)
+
+
+def test_practice_empty_sources_allowed(knowledge_dir):
+    k = load_knowledge(knowledge_dir)
+    cmn01 = k["common"]["checks"][0]
+    assert cmn01["basis"] == "practice"
+    assert cmn01["sources"] == []
 
 
 def test_duplicate_id_rejected(knowledge_dir):
@@ -31,30 +70,30 @@ def test_unknown_module_rejected(knowledge_dir):
 
 
 def test_missing_required_field_rejected(knowledge_dir):
-    bad = (knowledge_dir / "common.yaml").read_text().replace("    title: 손해배상\n", "")
+    bad = (knowledge_dir / "common.yaml").read_text().replace("    severity: 필수\n", "", 1)
     (knowledge_dir / "common.yaml").write_text(bad)
     with pytest.raises(ValidationError, match="필수 필드"):
         load_knowledge(knowledge_dir)
 
 
-def test_legal_basis_requires_verified(knowledge_dir):
+def test_source_missing_verified_rejected(knowledge_dir):
     bad = (knowledge_dir / "types" / "outsourcing.yaml").read_text().replace("        verified: true\n", "")
     (knowledge_dir / "types" / "outsourcing.yaml").write_text(bad)
-    with pytest.raises(ValidationError, match="legal_basis"):
+    with pytest.raises(ValidationError, match="sources"):
         load_knowledge(knowledge_dir)
 
 
 def test_empty_meta_rejected(knowledge_dir):
-    (knowledge_dir / "common.yaml").write_text("meta:\ncheckpoints: []\n")
+    (knowledge_dir / "common.yaml").write_text("meta:\nchecks: []\n")
     with pytest.raises(ValidationError, match="meta"):
         load_knowledge(knowledge_dir)
 
 
-def test_null_checkpoints_rejected(knowledge_dir):
+def test_null_checks_rejected(knowledge_dir):
     text = (knowledge_dir / "common.yaml").read_text()
-    bad = text.split("checkpoints:")[0] + "checkpoints:\n"
+    bad = text.split("checks:")[0] + "checks:\n"
     (knowledge_dir / "common.yaml").write_text(bad)
-    with pytest.raises(ValidationError, match="checkpoints"):
+    with pytest.raises(ValidationError, match="checks"):
         load_knowledge(knowledge_dir)
 
 

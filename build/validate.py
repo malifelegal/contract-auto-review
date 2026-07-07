@@ -21,9 +21,15 @@ def load_knowledge(knowledge_dir):
 
 
 def _load_file(path):
+    if not path.is_file():
+        raise ValidationError(f"{path.name}: 파일을 찾을 수 없음")
     data = yaml.safe_load(path.read_text())
-    if not isinstance(data, dict) or "meta" not in data or "checkpoints" not in data:
+    if not isinstance(data, dict):
         raise ValidationError(f"{path.name}: 최상위에 meta·checkpoints 키가 필요함")
+    if not isinstance(data.get("meta"), dict):
+        raise ValidationError(f"{path.name}: meta는 비어 있지 않은 매핑이어야 함")
+    if not isinstance(data.get("checkpoints"), list):
+        raise ValidationError(f"{path.name}: checkpoints는 리스트여야 함")
     data["meta"].setdefault("modules", [])
     data["meta"].setdefault("detect_keywords", [])
     return data

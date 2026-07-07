@@ -42,3 +42,23 @@ def test_legal_basis_requires_verified(knowledge_dir):
     (knowledge_dir / "types" / "outsourcing.yaml").write_text(bad)
     with pytest.raises(ValidationError, match="legal_basis"):
         load_knowledge(knowledge_dir)
+
+
+def test_empty_meta_rejected(knowledge_dir):
+    (knowledge_dir / "common.yaml").write_text("meta:\ncheckpoints: []\n")
+    with pytest.raises(ValidationError, match="meta"):
+        load_knowledge(knowledge_dir)
+
+
+def test_null_checkpoints_rejected(knowledge_dir):
+    text = (knowledge_dir / "common.yaml").read_text()
+    bad = text.split("checkpoints:")[0] + "checkpoints:\n"
+    (knowledge_dir / "common.yaml").write_text(bad)
+    with pytest.raises(ValidationError, match="checkpoints"):
+        load_knowledge(knowledge_dir)
+
+
+def test_missing_common_yaml_rejected(knowledge_dir):
+    (knowledge_dir / "common.yaml").unlink()
+    with pytest.raises(ValidationError, match="찾을 수 없음"):
+        load_knowledge(knowledge_dir)

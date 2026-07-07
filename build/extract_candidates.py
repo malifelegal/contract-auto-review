@@ -26,6 +26,14 @@ import config
 _ITEM_SPLIT_RE = re.compile(r"(?<=\s)\d{1,2}\.\s+")
 # 항(①②③...) 경계 — 마지막 호 뒤에 이어지는 다음 항 텍스트를 잘라내기 위함
 _CIRCLED_RE = re.compile(r"[①-⑳]")
+# 개정 이력 꺾쇠 주석(<개정 2022. 12. 21.> 등). 날짜에 내부 공백이 있으면
+# "12. "·"21.>"가 호 경계로 오인되므로 호 분할 전에 통째로 제거한다.
+# 변형 대응: <단서신설 …>·<종전의 제N항에서 이동, …>처럼 키워드가 꺾쇠 중간에 오거나
+# 마침표 없는 날짜(<… 2018. 12. 21>)도 있어, "개정 키워드 또는 연도 날짜를 포함한 꺾쇠"를
+# 제거 대상으로 삼는다. <별표 2의2> 같은 실질 내용 참조는 키워드·날짜가 없어 보존됨.
+_AMEND_NOTE_RE = re.compile(
+    r"<(?=[^>]*(?:개정|신설|삭제|이동|\d{4}\.\s*\d{1,2}\.))[^>]*>"
+)
 _ENUM_HINT_RE = re.compile(r"다음\s*각\s*호")
 _MANDATORY_RE = re.compile(r"하여야\s*한다")
 _PERMISSIVE_RE = re.compile(r"할\s*수\s*있다")
@@ -68,19 +76,46 @@ def is_enumerated(text):
     return "포함" in text or bool(_MANDATORY_RE.search(text))
 
 
+def _strip_edge_notes(item):
+    """호 문언의 양 끝에 붙은 개정 주석·공백을 제거. 끝단 제거는 나머지가 연속
+    문자열로 남으므로 원문 부분문자열 불변식을 깨지 않는다. 중간 주석은 보존."""
+    prev = None
+    while prev != item:
+        prev = item
+        item = item.strip()
+        m = _AMEND_NOTE_RE.match(item)
+        if m:
+            item = item[m.end():]
+            continue
+        for m in _AMEND_NOTE_RE.finditer(item):
+            if m.end() == len(item):
+                item = item[: m.start()]
+                break
+    return item.strip()
+
+
 def split_items(text):
-    """열거형 조문 text를 호(1. 2. 3. ...) 단위로 분해. 각 항목은 원문의 부분문자열이며,
-    다음 항(①②③...) 텍스트가 섞이지 않도록 절단한다. 비열거형이면 빈 리스트."""
-    parts = _ITEM_SPLIT_RE.split(text)
-    if len(parts) < 2:
+    """열거형 조문 text를 호(1. 2. 3. ...) 단위로 분해. 비열거형이면 빈 리스트.
+
+    호 경계 탐지는 개정 주석을 같은 길이의 공백으로 치환한 사본(blanked)에서 수행해
+    <개정 2022. 12. 21.>의 "12. "·"21."이 호 경계로 오인되는 것을 차단하고,
+    실제 문언은 동일 오프셋으로 원문(text)에서 슬라이스해 quote가 항상 원문
+    부분문자열이 되도록 한다. 다음 항(①②③...) 텍스트가 섞이지 않도록 절단하며,
+    호 양 끝의 주석만 제거하고 중간 주석은 보존한다."""
+    blanked = _AMEND_NOTE_RE.sub(lambda m: " " * len(m.group(0)), text)
+    marks = list(_ITEM_SPLIT_RE.finditer(blanked))
+    if not marks:
         return []
     items = []
-    for part in parts[1:]:
-        m = _CIRCLED_RE.search(part)
-        chunk = part[: m.start()] if m else part
-        chunk = chunk.strip()
-        if chunk:
-            items.append(chunk)
+    for i, m in enumerate(marks):
+        start = m.end()
+        end = marks[i + 1].start() if i + 1 < len(marks) else len(text)
+        clause_end = _CIRCLED_RE.search(blanked, start, end)
+        if clause_end:
+            end = clause_end.start()
+        item = _strip_edge_notes(text[start:end])
+        if item:
+            items.append(item)
     return items
 
 

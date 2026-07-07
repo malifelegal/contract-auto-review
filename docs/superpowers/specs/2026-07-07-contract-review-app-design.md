@@ -1,0 +1,152 @@
+# 계약서 리뷰 가이드 앱 설계서 (contract-review)
+
+- 작성일: 2026-07-07
+- 상태: 승인됨 (초기 설계)
+- 사용자: 미래에셋생명보험 법무팀 (1차 사용자: 손남수)
+
+## 1. 목적
+
+계약서(대상 파일)를 넣으면 조항별로 필요한 정보·주의사항·반영사항을 띄워주고,
+계약서 없이도 유형별 체크리스트·가이드를 열람할 수 있는 **오프라인 단일 HTML 앱**을 만든다.
+
+핵심 가치:
+- 회사 PC에서 브라우저만으로 실행 (네트워크 통신 없음 → 계약서 텍스트가 기기 밖으로 나가지 않음)
+- 조문·정부자료·사내 판단자산(J-ID)이 근거로 첨부된 체크리스트
+- 규칙 기반 매칭으로 "왜 이 항목이 떴는지" 항상 설명 가능
+
+## 2. 확정 요구사항
+
+| 항목 | 결정 |
+|---|---|
+| 실행 형태 | 정적 HTML 단일 파일, 완전 오프라인 |
+| 계약 유형 범위 | 보험사 법무팀 주요 7종: 업무위탁, IT외주, 판매제휴·GA, 일반 용역, NDA, 구매, 임대차 + 공통 체크리스트 (2층 구조) |
+| 입력 방식 | 텍스트 붙여넣기 + .docx 업로드 (JSZip 경량 파서 인라인). HWP/PDF는 텍스트 변환 후 붙여넣기로 우회 |
+| 출력 | ① 조항별 매핑 뷰 ② 종합 리포트 (누락 조항·심각도별 이슈·점검표) ③ 가이드 열람 모드 |
+| 지식 구축 | Claude 초안 (YAML) → 사람 검수 → 확정본만 HTML 내장 |
+| 매칭 엔진 | 키워드·정규식 규칙 기반 (A안). 자유 검색용 경량 인덱스 보조. WASM 임베딩은 기각 |
+
+## 3. 데이터 소스 인벤토리
+
+| 소스 | 경로 | 내용 | 규모 |
+|---|---|---|---|
+| 뉴스클리핑 DB | `~/Library/Mobile Documents/com~apple~CloudDocs/cursor/news clipping/data/briefing.sqlite3` | 정부자료 (press/case_law/legislation/admin_notice), FTS5 | 2,164건 |
+| 법령 조문 DB | `.../cursor/comp_matching_auto/data/laws_monitored.sqlite` | law_articles (law_name, article_ref, text) | 21,098 조문 |
+| 금융위 가이드라인 | `.../comp_matching_auto/data/fsc_guidelines.sqlite` | 동일 스키마 | 1,928건 |
+| 협회 규정 | `.../comp_matching_auto/data/klia_regulations.sqlite` | 동일 스키마 | 1,025건 |
+| vault 법령 md | Obsidian vault (law-lookup 스킬 경로) | 법령 전문 마크다운 | 보조 소스 |
+| J-ID 판단자산 | legal-rag-poc (jid-retrieve MCP) | 사내 법무 판단 선례 | 492건+ |
+
+## 4. 아키텍처
+
+원칙: **빌드 타임에 무겁게, 런타임에 가볍게.**
+지능이 필요한 일(지식 큐레이션, 조문 원문 대조, 규제동향 선별)은 빌드 단계에서 Claude와
+Python이 수행하고, HTML 안에서는 예측 가능한 규칙 기반 매칭만 돈다.
+
+```
+knowledge/*.yaml  (소스오브트루스, 사람 검수 대상)
+        │
+build/build_html.py
+        ├── laws_monitored.sqlite   → verified 조문 원문 자동 첨부
+        ├── fsc/klia sqlite         → 가이드라인·협회규정 원문
+        ├── briefing.sqlite3        → news_refs 규제동향 요약
+        └── J-ID                    → jid_refs 선례 요약
+        ▼
+dist/contract-review.html  (단일 파일, 전부 내장)
+```
+
+### 리포지토리 구조
+
+```
+contract-review/
+├── knowledge/
+│   ├── schema.md              # YAML 스키마 정의 문서
+│   ├── common.yaml            # 공통 체크리스트 (모든 계약)
+│   └── types/
+│       ├── outsourcing.yaml   # 업무위탁 (금융권 특화)
+│       ├── it-outsourcing.yaml
+│       ├── ga-agency.yaml     # 판매제휴·GA
+│       ├── service.yaml       # 일반 용역
+│       ├── nda.yaml
+│       ├── purchase.yaml      # 구매
+│       └── lease.yaml         # 임대차
+├── build/
+│   ├── extract_laws.py        # 조문 DB에서 인용 원문 추출
+│   ├── extract_news.py        # 뉴스클리핑에서 규제동향 추출
+│   └── build_html.py          # knowledge + 추출자료 → 단일 HTML
+├── src/
+│   ├── template.html          # 앱 골격 (CSS·JS 인라인 대상)
+│   ├── app.js                 # 조항분할·매칭·렌더링
+│   └── style.css
+├── dist/
+│   └── contract-review.html   # 산출물
+└── docs/superpowers/specs/    # 설계 문서
+```
+
+## 5. 지식 파일 스키마
+
+체크포인트 단위 YAML. 검수 워크플로우의 기본 단위.
+
+```yaml
+- id: OUT-03                   # 유형약어-번호, 전역 유일
+  title: 재위탁 제한 및 사전 동의
+  severity: 필수                # 필수 / 권장 / 참고
+  triggers:
+    keywords: [재위탁, 재수탁, 하도급, 제3자 위탁]
+    patterns: []               # 정규식 (선택)
+  absence_check: true          # true면 매칭 조항 부재 시 "누락 의심" 보고
+  guidance: >
+    검토 지침 본문. ~음/~슴 기술식 문체.
+  legal_basis:
+    - law: 금융기관의 업무위탁 등에 관한 규정
+      article: 제3조
+      verified: false          # 원문 대조 완료 시에만 true
+  jid_refs: []                 # 관련 J-ID
+  news_refs: []                # briefing item id
+```
+
+### 근거 등급 관통 원칙 (법무 하네스 정합)
+
+- `verified: true`인 조문만 빌드 시 DB에서 원문을 찾아 첨부한다.
+- 원문을 DB에서 찾지 못하면 빌드가 경고를 내고 해당 항목은 `[원문 미확인]` 배지로 표시된다.
+- `verified: false` 항목은 HTML에서 `[원문 미대조]` 배지가 그대로 노출된다.
+- 조문 인용 시 강행/임의/추정/간주 규범 유형을 guidance에 병기한다.
+
+## 6. 브라우저 앱 동작 (런타임)
+
+1. **입력**: 텍스트 붙여넣기 또는 .docx 드롭 (JSZip 인라인, `word/document.xml` 텍스트 추출)
+2. **조항 분할**: `제N조`, `N.`, 헤딩 패턴 정규식 자동 분할. 분할 결과 수동 병합·분리 가능
+3. **유형 감지**: 제목·전문 키워드 스코어로 추정 → 사용자가 드롭다운으로 확정 (자동 판정 강제 없음)
+4. **매핑**: 선택 유형 + 공통 체크포인트의 트리거를 각 조항에 대조.
+   좌측 계약서 원문 / 우측 매핑 카드 (체크포인트·근거 조문 원문·가이드·규제동향·J-ID)
+5. **종합 리포트 탭**:
+   - 누락 의심: `absence_check` 체크포인트 중 미매칭 항목
+   - 심각도별 이슈 목록 (필수 → 권장 → 참고)
+   - 인쇄 가능한 점검표. 체크 상태는 localStorage 저장
+6. **가이드 모드**: 계약서 없이 유형 선택 → 체크리스트·조문 원문·규제동향 브라우징 + 전문 검색
+7. **고지 고정**: "본 도구는 규칙 기반 스크리닝 참고자료이며 법적 판단을 대체하지 않음"
+
+### 오류 처리
+
+- .docx 파싱 실패 → "텍스트로 변환 후 붙여넣기" 안내로 폴백
+- 조항 분할 실패 (패턴 미검출) → 전문을 단일 블록으로 취급하고 전체 대상 매칭 수행
+- 유형 미선택 → 공통 체크리스트만 적용
+- 브라우저 호환: 회사 PC 기준 Edge/Chrome 최신. 외부 요청 0건 (CSP 관점에서도 안전)
+
+## 7. 빌드 파이프라인 검증
+
+- 빌드 시 검증 규칙: id 중복, severity 값, verified 조문의 DB 존재 여부, YAML 스키마 위반 → 실패 처리
+- 산출 HTML 스모크 테스트: 내장 JSON 파싱 가능 여부, 체크포인트 수 일치
+- 지식 검수 흐름: Claude 초안 생성 → `verified: false` 상태로 커밋 → 손남수 원문 대조 검수 → `verified: true` 승격 커밋 → 재빌드
+
+## 8. 구축 단계
+
+- **Phase 1 (E2E 검증)**: 리포 골격 + 스키마 확정 + 업무위탁 1종 지식 초안·검수 + 빌드 파이프라인 + HTML 앱 전 기능
+- **Phase 2 (확장)**: 나머지 6종 지식 초안 일괄 생성 → 순차 검수
+- **Phase 3 (갱신 루틴)**: 법령 개정·뉴스클리핑 신규 자료 반영 재빌드 스크립트 정리 (수동 트리거 1회 실행)
+
+## 9. 비범위 (명시적 제외)
+
+- 시맨틱(임베딩) 매칭 — WASM 이식 기각, 파일 크기·호환성 리스크
+- HWP/PDF 직접 파싱 — 텍스트 변환 후 붙여넣기로 우회
+- 서버·네트워크 기능 일체
+- 계약서 자동 수정·문안 생성 (가이드 제시까지만)

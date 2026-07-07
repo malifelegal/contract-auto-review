@@ -61,6 +61,32 @@ def test_lookup_article_title_suffix(law_db):
     assert lookup_article("테스트법2", "제5조", [law_db]) == "제5조 내용임"
 
 
+def _make_law_db(path, rows):
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "CREATE TABLE law_articles (id INTEGER PRIMARY KEY, law_name TEXT, "
+        "article_ref TEXT, text TEXT, mst TEXT, source TEXT, updated_at TEXT)"
+    )
+    conn.executemany(
+        "INSERT INTO law_articles (law_name, article_ref, text) VALUES (?, ?, ?)", rows
+    )
+    conn.commit()
+    conn.close()
+    return path
+
+
+def test_lookup_falls_through_to_next_db(tmp_path):
+    db1 = _make_law_db(tmp_path / "db1.sqlite", [("무관한법", "제9조", "무관한 내용")])
+    db2 = _make_law_db(tmp_path / "db2.sqlite", [("폴스루법", "제1조", "폴스루 내용")])
+    assert lookup_article("폴스루법", "제1조", [db1, db2]) == "폴스루 내용"
+
+
+def test_lookup_first_db_wins(tmp_path):
+    db1 = _make_law_db(tmp_path / "db1.sqlite", [("중복법", "제1조", "DB1 내용")])
+    db2 = _make_law_db(tmp_path / "db2.sqlite", [("중복법", "제1조", "DB2 내용")])
+    assert lookup_article("중복법", "제1조", [db1, db2]) == "DB1 내용"
+
+
 def test_lookup_no_false_prefix(law_db):
     conn = sqlite3.connect(law_db)
     conn.execute(

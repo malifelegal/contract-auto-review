@@ -8,7 +8,7 @@ checkpoints:
     title: 당사자·계약 목적 특정
     severity: 필수
     triggers:
-      keywords: [목적, 당사자, 갑, 을]
+      keywords: [목적, 당사자, 계약당사자, 갑과 을]
     absence_check: true
     guidance: >
       계약 당사자의 명칭·법인격이 정확히 특정되어 있는지, 계약의 목적 조항이
@@ -52,7 +52,7 @@ checkpoints:
     title: 해지·해제 사유와 절차
     severity: 필수
     triggers:
-      keywords: [해지, 해제, 계약의 종료, 최고]
+      keywords: [해지, 해제, 계약의 해지, 계약의 종료]
     absence_check: true
     guidance: >
       약정 해지·해제 사유(중대한 위반, 도산, 신용상태 악화 등)와 절차(시정 최고
@@ -132,7 +132,7 @@ checkpoints:
     title: 권리의무 양도 금지
     severity: 권장
     triggers:
-      keywords: [양도, 이전, 승계, 담보 제공]
+      keywords: [양도, 이전할 수 없다, 권리의 이전, 승계, 담보 제공]
     absence_check: true
     guidance: >
       계약상 지위 또는 권리의무를 상대방 사전 서면 동의 없이 제3자에게 양도·이전·

@@ -27,6 +27,23 @@ test("숫자 헤딩(1. )으로도 분할한다", () => {
   assert.match(clauses[1].body, /내용B/);
 });
 
+test("제N조 본문 안의 호 나열은 분할하지 않는다", () => {
+  const text = [
+    "제1조 (범위) 다음 각 호와 같다.",
+    "1. 위탁업무의 범위",
+    "2. 수탁자의 의무",
+    "제2조 (기간) 계약기간은 1년이다.",
+    "1. 갱신 조건",
+  ].join("\n");
+  const clauses = segmentContract(text);
+  assert.strictEqual(clauses.length, 2);
+  assert.match(clauses[0].heading, /제1조/);
+  assert.match(clauses[0].body, /위탁업무의 범위/);
+  assert.match(clauses[0].body, /수탁자의 의무/);
+  assert.match(clauses[1].heading, /제2조/);
+  assert.match(clauses[1].body, /갱신 조건/);
+});
+
 test("패턴 미검출 시 전체를 단일 블록으로 반환한다", () => {
   const clauses = segmentContract("아무 구조 없는 텍스트입니다.\n둘째 줄.");
   assert.strictEqual(clauses.length, 1);

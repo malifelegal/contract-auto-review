@@ -13,6 +13,15 @@ function segmentContract(text) {
   for (var i = 0; i < lines.length; i++) {
     var t = lines[i].trim();
     var isHeading = t && CR_HEADING_RES.some(function (re) { return re.test(t); });
+    // 제N조 조항이 열려 있으면, 숫자 헤딩(1. 2. ...)은 각 호 나열이므로 본문으로 취급
+    if (
+      isHeading &&
+      !CR_HEADING_RES[0].test(t) &&
+      current &&
+      CR_HEADING_RES[0].test(current.heading)
+    ) {
+      isHeading = false;
+    }
     if (isHeading) {
       if (current) clauses.push(current);
       current = { heading: t, body: "" };

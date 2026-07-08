@@ -444,38 +444,153 @@ function renderClauses() {
   });
 }
 
-/* ---------- 종합 리포트 ---------- */
+/* ---------- 종합 리포트 (긍정-먼저 검토 워크시트) ----------
+   실패 목록이 아니라 검토 진행 현황: 반영된 항목을 먼저·크게, 확인·검토 제안을 뒤에.
+   판정형 어휘 금지 — 짚어진/반영/확인 권장/검토 제안 화법. */
 function hashText(s) {
   var h = 5381;
   for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
   return "cr-" + (h >>> 0).toString(36);
+}
+var SEV_RANK = { "필수": 0, "권장": 1, "참고": 2 };
+function _sevSort(a, b) {
+  var ra = SEV_RANK[a.severity]; if (ra === undefined) ra = 3;
+  var rb = SEV_RANK[b.severity]; if (rb === undefined) rb = 3;
+  return ra - rb;
+}
+function _clauseHeading(idx) {
+  var c = state.clauses[idx];
+  return c ? c.heading : ("조항#" + idx);
+}
+function _signoff(cp, saved) {
+  var ck = saved[cp.id] ? " checked" : "";
+  return '<label class="signoff"><input type="checkbox" data-cp="' + esc(cp.id) + '"' + ck +
+    "> 검토 완료 표시</label>";
+}
+function _reportTile(cov, n, label, sub) {
+  return '<div class="tile tile-' + cov + '"><span class="tile-n">' + n + "</span>" +
+    '<span class="tile-label">' + esc(label) + "</span>" +
+    '<span class="tile-sub">' + esc(sub) + "</span></div>";
+}
+// 검토 제안(consider): 왜 봐야 하는지(severity_basis) + check 질문 + 근거 + sign-off.
+function _considerItem(it, saved) {
+  var cp = it.cp;
+  return '<div class="report-item consider-item">' +
+    '<div class="ri-head"><span class="sev sev-' + cp.severity + '" title="' +
+    esc(cp.severity_basis || "") + '">' + esc(cp.severity) + "</span>" +
+    '<span class="ri-q">' + esc(cp.check) + "</span></div>" +
+    (cp.severity_basis ? '<p class="ri-why">왜 봐야 하는지: ' + esc(cp.severity_basis) + "</p>" : "") +
+    '<p class="ri-src">근거 ' + evidenceCell(cp) + "</p>" +
+    _signoff(cp, saved) + "</div>";
+}
+// 확인 권장(verify): 관련 조항·이유 + sign-off.
+function _verifyItem(it, saved) {
+  var cp = it.cp, res = it.res;
+  var loc = res.best ? _clauseHeading(res.best.clauseIndex) : "";
+  var reasons = (res.best && res.best.reasons) || [];
+  return '<div class="report-item verify-item">' +
+    '<div class="ri-head"><span class="sev sev-' + cp.severity + '" title="' +
+    esc(cp.severity_basis || "") + '">' + esc(cp.severity) + "</span>" +
+    '<span class="ri-q">' + esc(cp.check) + "</span></div>" +
+    (loc ? '<p class="ri-loc">관련 조항: ' + esc(loc) + "</p>" : "") +
+    (reasons.length ? '<p class="ri-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
+    _signoff(cp, saved) + "</div>";
+}
+// 짚어진 항목(addressed): 어느 조항에서 반영됐는지 — 긍정 정보 노출.
+function _addressedItem(it) {
+  var cp = it.cp, res = it.res;
+  var loc = res.best ? _clauseHeading(res.best.clauseIndex) : "";
+  var reasons = (res.best && res.best.reasons) || [];
+  return '<div class="report-item addressed-item">' +
+    '<div class="ri-head"><span class="badge cov-addressed">✓ 반영</span>' +
+    '<span class="ri-q">' + esc(cp.check) + "</span></div>" +
+    (loc ? '<p class="ri-loc">' + esc(loc) + "에서 반영</p>" : "") +
+    (reasons.length ? '<p class="ri-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
+    "</div>";
+}
+// 조항별 검토 현황(선택): 반영/확인 건수 요약.
+function _clauseSummarySection(addressed, verify) {
+  var byClause = {};
+  addressed.concat(verify).forEach(function (it) {
+    if (!it.res.best) return;
+    var ci = it.res.best.clauseIndex;
+    var g = byClause[ci] || (byClause[ci] = { a: 0, v: 0 });
+    if (it.res.coverage === "addressed") g.a++; else g.v++;
+  });
+  var rows = state.clauses.map(function (c) {
+    var g = byClause[c.index];
+    if (!g) return "";
+    var parts = [];
+    if (g.a) parts.push("반영 " + g.a);
+    if (g.v) parts.push("확인 " + g.v);
+    return '<li><strong>' + esc(c.heading) + '</strong> <span class="cs-cnt">' +
+      esc(parts.join(" · ")) + "</span></li>";
+  }).filter(Boolean);
+  if (!rows.length) return "";
+  return '<details class="report-sec"><summary>조항별 검토 현황</summary>' +
+    '<ul class="clause-summary">' + rows.join("") + "</ul></details>";
 }
 function renderReport() {
   var key = hashText(state.text);
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) {}
   var r = state.result;
-  var h = "<h2>종합 리포트</h2>";
-  h += "<h3>검토 제안 (" + r.missing.length + ")</h3>";
-  h += r.missing.map(function (cp) {
-    return '<div class="cp-card consider-item">' + renderCheckCard(cp, null) + "</div>";
-  }).join("") || "<p>검토 제안 항목 없음</p>";
-  ["필수", "권장", "참고"].forEach(function (sev) {
-    var ms = r.matches.filter(function (m) {
-      var cp = r.checkpoints.filter(function (c) { return c.id === m.cpId; })[0];
-      return cp.severity === sev;
-    });
-    var seen = {};
-    h += "<h3>" + sev + " 확인 항목</h3><ul class='checklist'>";
-    ms.forEach(function (m) {
-      if (seen[m.cpId]) return; seen[m.cpId] = true;
-      var cp = r.checkpoints.filter(function (c) { return c.id === m.cpId; })[0];
-      var ck = saved[cp.id] ? " checked" : "";
-      h += '<li><label><input type="checkbox" data-cp="' + esc(cp.id) + '"' + ck + "> " +
-        esc(cp.id) + " " + esc(cp.check) + " — " + evidenceCell(cp) + "</label></li>";
-    });
-    h += "</ul>";
+
+  var addressed = [], verify = [], consider = [];
+  r.results.forEach(function (res) {
+    var cp = _cpById(res.cpId);
+    if (!cp) return;
+    var it = { cp: cp, res: res, severity: cp.severity };
+    if (res.coverage === "addressed") addressed.push(it);
+    else if (res.coverage === "verify") verify.push(it);
+    else if (res.coverage === "consider") consider.push(it);
   });
+  addressed.sort(_sevSort); verify.sort(_sevSort); consider.sort(_sevSort);
+
+  var h = "<h2>검토 워크시트</h2>";
+  h += '<p class="report-intro">이 계약서에서 아래와 같이 검토됨. 반영된 항목을 먼저 두고, 확인·검토 제안을 정리함. 각 항목은 검토 후 “검토 완료 표시”로 남길 수 있음.</p>';
+
+  // 1) 긍정 먼저 요약 타일
+  h += '<div class="report-tiles">' +
+    _reportTile("addressed", addressed.length, "짚어진 항목", "계약서가 반영함") +
+    _reportTile("verify", verify.length, "확인 권장", "관련 조항 있음 · 문구 확인") +
+    _reportTile("consider", consider.length, "검토 제안", "필요한 계약인지 검토") +
+    "</div>";
+
+  // 2) 검토 제안 — 심각도순 · 접힘(필수 표면, 권장 접힘)
+  h += '<section class="report-sec-block">';
+  h += "<h3>검토 제안 (" + consider.length + ")</h3>";
+  if (!consider.length) {
+    h += '<p class="report-none">검토 제안 항목 없음 — 필수·권장 항목이 모두 관련 조항에 닿았음.</p>';
+  } else {
+    h += '<p class="sec-hint">이 항목이 계약서에서 보이지 않음 — 빠졌다는 뜻이 아니라, 필요한 계약인지 검토 제안.</p>';
+    var must = consider.filter(function (it) { return it.severity === "필수"; });
+    var rec = consider.filter(function (it) { return it.severity !== "필수"; });
+    h += must.map(function (it) { return _considerItem(it, saved); }).join("");
+    if (rec.length) {
+      h += '<details class="report-more"><summary>권장 검토 제안 ' + rec.length + "건 펼치기</summary>" +
+        rec.map(function (it) { return _considerItem(it, saved); }).join("") + "</details>";
+    }
+  }
+  h += "</section>";
+
+  // 3) 확인 권장
+  h += '<details class="report-sec" open><summary>확인 권장 ' + verify.length +
+    " — 관련 조항 있음, 문구 확인 권함</summary>";
+  h += verify.map(function (it) { return _verifyItem(it, saved); }).join("") ||
+    '<p class="report-none">확인 권장 항목 없음.</p>';
+  h += "</details>";
+
+  // 4) 짚어진 항목
+  h += '<details class="report-sec"><summary>짚어진 항목 ' + addressed.length +
+    " — 계약서가 반영한 항목</summary>";
+  h += addressed.map(_addressedItem).join("") ||
+    '<p class="report-none">아직 반영으로 짚인 항목 없음.</p>';
+  h += "</details>";
+
+  // 5) 조항별 검토 현황(선택)
+  h += _clauseSummarySection(addressed, verify);
+
   var body = document.getElementById("report-body");
   body.innerHTML = h;
   body.querySelectorAll("input[type=checkbox]").forEach(function (cb) {
@@ -485,6 +600,17 @@ function renderReport() {
     });
   });
 }
+// 인쇄 시 접힌 섹션도 펼쳐 요약 타일·검토 제안·확인 권장이 모두 나오게.
+window.addEventListener("beforeprint", function () {
+  document.querySelectorAll("#report-body details").forEach(function (d) {
+    if (!d.open) { d.dataset.wasClosed = "1"; d.open = true; }
+  });
+});
+window.addEventListener("afterprint", function () {
+  document.querySelectorAll("#report-body details[data-was-closed]").forEach(function (d) {
+    d.open = false; d.removeAttribute("data-was-closed");
+  });
+});
 
 initChecklistType();
 renderChecklist();

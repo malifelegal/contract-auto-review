@@ -127,7 +127,10 @@ function checkStatus(cp) {
   if (!r) return { cls: "", label: "—" }; // 이번 분석에서 비활성 모듈 체크
   if (r.tier === "confirmed") return { cls: "tier-confirmed", label: TIER_LABEL.confirmed };
   if (r.tier === "review") return { cls: "tier-review", label: TIER_LABEL.review };
-  return { cls: "", label: "" }; // none — 빈칸 (누락 여부는 행 고정으로 별도 표시)
+  // none: absence_check && none(= missing에 포함)이면 "미검출" 라벨. 그 외 none은 빈칸.
+  var isMissing = state.result.missing.some(function (m) { return m.id === cp.id; });
+  if (isMissing) return { cls: "tier-missing", label: "✗ 미검출" };
+  return { cls: "", label: "" }; // 비-absence none — 빈칸
 }
 
 function renderModuleGuideBar(modules) {

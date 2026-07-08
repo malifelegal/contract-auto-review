@@ -51,6 +51,7 @@ textarea#contract-text { width: 100%; height: 200px; }
 .badge.practice { background: #eef0f3; color: #555; }
 .badge.tier-confirmed { background: #e8f8f0; color: #1e8449; }
 .badge.tier-review { background: #fef5e7; color: #b9770e; }
+.badge.tier-missing { background: #fdecea; color: #c0392b; }
 
 details.law { margin-top: 8px; font-size: 13px; }
 details.law pre { white-space: pre-wrap; background: #f8f9fc; padding: 10px;
@@ -83,6 +84,7 @@ details.law pre { white-space: pre-wrap; background: #f8f9fc; padding: 10px;
 .match-cell { font-weight: 600; white-space: nowrap; }
 .match-cell.tier-confirmed { color: #1e8449; }
 .match-cell.tier-review { color: #b9770e; }
+.match-cell.tier-missing { color: #c0392b; }
 td.empty { text-align: center; color: #889; padding: 24px; }
 
 .empty-note { color: #667; }

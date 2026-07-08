@@ -57,6 +57,7 @@ textarea#contract-text { width: 100%; height: 200px; }
 .badge.practice { background: #eef0f3; color: #555; }
 .badge.tier-confirmed { background: #e8f8f0; color: #1e8449; }
 .badge.tier-review { background: #fef5e7; color: #b9770e; }
+.badge.tier-missing { background: #fdecea; color: #c0392b; }
 
 details.law { margin-top: 8px; font-size: 13px; }
 details.law pre { white-space: pre-wrap; background: #f8f9fc; padding: 10px;
@@ -89,6 +90,7 @@ details.law pre { white-space: pre-wrap; background: #f8f9fc; padding: 10px;
 .match-cell { font-weight: 600; white-space: nowrap; }
 .match-cell.tier-confirmed { color: #1e8449; }
 .match-cell.tier-review { color: #b9770e; }
+.match-cell.tier-missing { color: #c0392b; }
 td.empty { text-align: center; color: #889; padding: 24px; }
 
 .empty-note { color: #667; }
@@ -942,7 +944,10 @@ function checkStatus(cp) {
   if (!r) return { cls: "", label: "—" }; // 이번 분석에서 비활성 모듈 체크
   if (r.tier === "confirmed") return { cls: "tier-confirmed", label: TIER_LABEL.confirmed };
   if (r.tier === "review") return { cls: "tier-review", label: TIER_LABEL.review };
-  return { cls: "", label: "" }; // none — 빈칸 (누락 여부는 행 고정으로 별도 표시)
+  // none: absence_check && none(= missing에 포함)이면 "미검출" 라벨. 그 외 none은 빈칸.
+  var isMissing = state.result.missing.some(function (m) { return m.id === cp.id; });
+  if (isMissing) return { cls: "tier-missing", label: "✗ 미검출" };
+  return { cls: "", label: "" }; // 비-absence none — 빈칸
 }
 
 function renderModuleGuideBar(modules) {

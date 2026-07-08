@@ -63,7 +63,10 @@ var ClauseRole = (function () {
   }
 
   // 규범유형: 금지 > 의무 > 권한 > 선언 (comp preprocess.classify_norm_type 이식, 라벨만 국문 그대로)
-  var PROHIBITION_RE = [/아니\s*된다/, /하여서는\s*아니/, /금지/];
+  var PROHIBITION_RE = [
+    /아니\s*된다/, /하여서는\s*아니/, /금지/,
+    /할\s*수\s*없다/, /하지\s*못한다/, /해서는\s*안/
+  ];
   var OBLIGATION_RE = [/하여야\s*한다/, /해야\s*한다/, /의무/];
   var RIGHT_RE = [/할\s*수\s*있다/, /권한/];
   var DECLARATION_RE = [/본다/, /간주/, /추정/, /정의한다/, /말한다/];

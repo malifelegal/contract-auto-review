@@ -109,3 +109,20 @@ test("normType: 우선순위 — 금지와 의무 표현이 함께 있으면 금
   const t = "재위탁하여서는 아니 된다. 다만 사전 통지의무가 있는 경우 통지하여야 한다.";
   assert.strictEqual(normType(t), "금지");
 });
+
+// 회귀(2026-07-08): '할 수 없다'·'하지 못한다'·'해서는 안' 형 금지 표현도 금지로 판정해야 함.
+// 이 누락으로 샘플 제5조 "재위탁할 수 없다"가 null → CORE-07 자동확정이 review로 강등됐음.
+test("normType: '할 수 없다' 형 금지 (재위탁할 수 없다)", () => {
+  assert.strictEqual(normType("을은 갑의 동의 없이 재위탁할 수 없다."), "금지");
+});
+
+test("normType: '하지 못한다' 형 금지 (제공하지 못한다)", () => {
+  assert.strictEqual(normType("을은 개인정보를 제3자에게 제공하지 못한다."), "금지");
+});
+
+test("normType: '할 수 없다'가 '할 수 있다'(권한)보다 우선 매칭된다", () => {
+  // 금지 표현이 있으면 권한이 아니라 금지
+  assert.strictEqual(normType("을은 재위탁할 수 없다."), "금지");
+  // 순수 권한 표현은 여전히 권한
+  assert.strictEqual(normType("갑은 계약을 즉시 해지할 수 있다."), "권한");
+});

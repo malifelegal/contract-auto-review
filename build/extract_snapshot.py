@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 import config
+from add_to_snapshot import replay_external
 from validate import load_knowledge
 
 ROOT = Path(__file__).parent.parent
@@ -135,12 +136,17 @@ def main():
     finally:
         conn.close()
 
+    # 원본 DB에 없어 MCP로 조달한 조문(data/external_laws.json)을 재빌드분에 머지.
+    # 스냅샷을 삭제·재생성했으므로 매 재빌드마다 replay해야 조달분이 유실되지 않음.
+    external_n = replay_external(out_path)
+
     size_kb = out_path.stat().st_size / 1024
     print("=" * 60)
     print(f"스냅샷 추출 완료: {out_path}")
     print(f"  인용 (law, article) 쌍   : {len(pairs)}건")
     print(f"  원본에서 찾은 쌍          : {found}건")
     print(f"  스냅샷에 기록된 조문 row  : {len(written_keys)}건 (중복 제거 후)")
+    print(f"  MCP 조달 seed 머지        : {external_n}건 (external_laws.json)")
     print(f"  스냅샷 크기               : {size_kb:.1f} KB")
     if missing:
         print(f"  경고: 원본 DB에서 미발견 {len(missing)}건 (원본에도 없으면 정상):")

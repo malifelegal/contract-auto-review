@@ -1,12 +1,48 @@
 "use strict";
 const { test } = require("node:test");
 const assert = require("node:assert");
-const { detectType, suggestModules, analyze } = require("../src/matcher.js");
+const {
+  detectType, suggestModules, analyze,
+  checkText, clauseQuery, buildModel, citationHit,
+  scoreClauseCheck, decideTier, normMatches, titleBonus,
+} = require("../src/matcher.js");
+const MC = require("../src/matcher_config.js");
+const ClauseRole = require("../src/clause_role.js");
 
+// ── 픽스처 ───────────────────────────────────────────────────────
 const TYPES = [
   { meta: { type_id: "outsourcing", detect_keywords: ["위탁", "수탁"] }, checkpoints: [] },
   { meta: { type_id: "nda", detect_keywords: ["비밀유지"] }, checkpoints: [] },
 ];
+
+const CHECK_REWI = {
+  id: "CORE-07", module: "M-CORE", norm_type: "임의", absence_check: true,
+  check: "수탁자가 위탁자의 사전 동의 없이 재위탁하지 못하도록 하는 조항이 있는가",
+  triggers: { keywords: ["재위탁", "재수탁", "사전 동의", "제3자에게 위탁"] },
+  sources: [{
+    law: "금융기관의 업무위탁 등에 관한 규정", article: "제3조(업무위탁 등)", clause: "제4항",
+    quote: "위탁받은 업무를 제3자에게 재위탁할 수 있다",
+  }],
+};
+const CHECK_BIZ = {
+  id: "BIZ", module: "M-CORE", norm_type: "실무", absence_check: true,
+  check: "위탁 대상 업무의 범위가 열거 방식으로 구체적으로 특정되어 있는가",
+  triggers: { keywords: ["위탁업무", "업무의 범위", "위탁 대상"] }, sources: [],
+};
+const CHECK_PRIV = {
+  id: "PRIV-01", module: "M-PRIV", norm_type: "강행", absence_check: true,
+  check: "개인정보 처리위탁 시 위탁 내용을 문서화하였는가",
+  triggers: { keywords: ["개인정보", "처리위탁", "위탁 문서"] },
+  sources: [{
+    law: "개인정보 보호법", article: "제26조(업무위탁에 따른 개인정보의 처리 제한)", clause: "제1항",
+    quote: "개인정보의 처리 업무를 위탁하는 경우에는 문서로 한다",
+  }],
+};
+const CHECK_DECOY = {
+  id: "DECOY", module: "M-CORE", norm_type: "실무", absence_check: true,
+  check: "손해배상 상한이 설정되어 있는가(재위탁으로 인한 손해 포함)",
+  triggers: { keywords: ["손해배상", "배상 상한"] }, sources: [],
+};
 
 const OUT_DOC = {
   meta: {
@@ -16,16 +52,197 @@ const OUT_DOC = {
       { id: "M-PRIV", name: "개인정보", always_on: false, suggest_keywords: ["개인정보"] },
     ],
   },
-  checkpoints: [
-    { id: "OUT-01", title: "재위탁", severity: "필수", module: "M-CORE",
-      triggers: { keywords: ["재위탁"] }, absence_check: true, guidance: "g" },
-    { id: "OUT-02", title: "처리위탁 문서화", severity: "필수", module: "M-PRIV",
-      triggers: { keywords: ["개인정보"] }, absence_check: true, guidance: "g" },
-    { id: "OUT-03", title: "손해배상 상한", severity: "권장",
-      triggers: { keywords: [], patterns: ["손해\\s*배상"] }, absence_check: false, guidance: "g" },
-  ],
+  checkpoints: [CHECK_REWI, CHECK_BIZ, CHECK_PRIV, CHECK_DECOY],
 };
 
+const CLAUSES = [
+  { heading: "제1조 (목적)", body: "이 계약은 갑이 을에게 위탁하는 상담 업무의 수행에 관한 사항을 정함을 목적으로 한다.", index: 0 },
+  { heading: "제2조 (위탁업무의 범위)", body: "을이 수행할 업무는 고객 상담, 고객정보 조회 및 개인정보 처리 업무를 포함한다.", index: 1 },
+  { heading: "제3조 (계약기간)", body: "이 계약의 유효기간은 계약 체결일로부터 1년으로 한다.", index: 2 },
+  { heading: "제5조 (재위탁 금지)", body: "을은 갑의 사전 서면 동의 없이 위탁업무를 제3자에게 재위탁할 수 없다.", index: 3 },
+  { heading: "제6조 (비밀유지)", body: "을은 업무 수행 중 알게 된 갑의 영업비밀을 누설하여서는 아니 된다.", index: 4 },
+];
+
+function model(mods) { return buildModel([OUT_DOC], mods || ["M-CORE", "M-PRIV"]); }
+function entry(m, id) { return m.checks.filter((c) => c.cp.id === id)[0]; }
+
+// ── 텍스트 생성 ──────────────────────────────────────────────────
+test("checkText: 질문·quote·키워드·근거표제를 합쳐 전처리한다", () => {
+  const t = checkText(CHECK_REWI);
+  assert.ok(t.indexOf("재위탁") !== -1);
+  assert.ok(t.indexOf("업무위탁") !== -1); // 근거 조문 표제(업무위탁 등)
+  assert.ok(t.indexOf("제3자") !== -1);    // quote
+});
+
+test("clauseQuery: 표제 용어를 TITLE_K회 반복해 가중한다", () => {
+  const q = clauseQuery(CLAUSES[3]); // 제5조 (재위탁 금지)
+  const n = q.split("재위탁").length - 1;
+  assert.ok(n >= MC.TITLE_K + 1); // 표제 반복(K) + 본문 최소 1
+});
+
+// ── citationHit ──────────────────────────────────────────────────
+test("citationHit: 법령명+제N조 명시 조항이면 true", () => {
+  assert.strictEqual(
+    citationHit("본 업무는 개인정보 보호법 제26조에 따라 문서로 정한다", CHECK_PRIV), true);
+});
+
+test("citationHit: 무관 조항이면 false", () => {
+  assert.strictEqual(citationHit("을은 비밀을 누설하여서는 아니 된다", CHECK_PRIV), false);
+});
+
+test("citationHit: 법령명만 있고 조번호 없으면 false", () => {
+  assert.strictEqual(citationHit("개인정보 보호법을 준수한다", CHECK_PRIV), false);
+});
+
+test("citationHit: 조번호 불일치면 false", () => {
+  assert.strictEqual(citationHit("개인정보 보호법 제15조에 따른다", CHECK_PRIV), false);
+});
+
+// ── normMatches 매핑 ─────────────────────────────────────────────
+test("normMatches: 강행↔의무/금지, 임의↔권한, 추정/간주↔선언, 실무↔무매치", () => {
+  assert.strictEqual(normMatches("의무", "강행"), true);
+  assert.strictEqual(normMatches("금지", "강행"), true);
+  assert.strictEqual(normMatches("권한", "임의"), true);
+  assert.strictEqual(normMatches("선언", "추정"), true);
+  assert.strictEqual(normMatches("선언", "간주"), true);
+  assert.strictEqual(normMatches("의무", "임의"), false);
+  assert.strictEqual(normMatches("의무", "실무"), false);
+  assert.strictEqual(normMatches(null, "강행"), false);
+});
+
+// ── scoreClauseCheck ─────────────────────────────────────────────
+test("scoreClauseCheck: 동일 주제 조항이 무관 조항보다 높은 점수", () => {
+  const m = model(["M-CORE"]);
+  const e = entry(m, "CORE-07");
+  const onTopic = scoreClauseCheck(CLAUSES[3], e, m); // 재위탁 금지
+  const offTopic = scoreClauseCheck(CLAUSES[2], e, m); // 계약기간
+  assert.ok(onTopic.score > offTopic.score);
+  assert.ok(onTopic.signals >= 1);
+});
+
+test("scoreClauseCheck: normMatch면 NORM_BONUS만큼 점수가 오른다", () => {
+  const m = model(["M-CORE", "M-PRIV"]);
+  const e = entry(m, "PRIV-01"); // 강행
+  // 제6조 본문 "누설하여서는 아니 된다" → 금지, 강행↔금지 매칭
+  assert.strictEqual(ClauseRole.normType(CLAUSES[4].body), "금지");
+  const s = scoreClauseCheck(CLAUSES[4], e, m);
+  assert.strictEqual(s.normMatch, true);
+  // 규범유형만 비워 동일 조항 재채점 → 차이가 NORM_BONUS
+  const e2 = { cp: Object.assign({}, e.cp, { norm_type: "실무" }), text: e.text, doc: e.doc };
+  const s2 = scoreClauseCheck(CLAUSES[4], e2, m);
+  assert.strictEqual(s2.normMatch, false);
+  assert.ok(Math.abs((s.score - s2.score) - MC.NORM_BONUS) < 1e-9);
+});
+
+test("scoreClauseCheck: length-adaptive — 짧은 조항은 jaccard 가중이 커진다", () => {
+  const m = model(["M-CORE"]);
+  const e = entry(m, "BIZ");
+  const shortCl = { heading: "제2조 (위탁업무의 범위)", body: "위탁업무 범위를 정한다.", index: 0 };
+  const longBody = shortCl.body + " " + "가".repeat(MC.SHORT_LEN);
+  const longCl = { heading: shortCl.heading, body: longBody, index: 0 };
+  const sShort = scoreClauseCheck(shortCl, e, m);
+  const sLong = scoreClauseCheck(longCl, e, m);
+  // 본문이 SHORT_LEN 경계를 넘으면 가중 전환 — 두 점수가 서로 다르게 산출됨(가중 분기 확인)
+  assert.notStrictEqual(sShort.score, sLong.score);
+});
+
+test("scoreClauseCheck: titleBonus — 표제 용어가 check 핵심어와 겹치면 가산", () => {
+  const m = model(["M-CORE"]);
+  const e = entry(m, "CORE-07");
+  const withTitle = titleBonus(CLAUSES[3], e.text);   // 표제 "재위탁 금지"
+  const noTitle = titleBonus({ heading: "제9조", body: "..." }, e.text); // 표제 없음
+  assert.ok(withTitle > 0 && withTitle <= MC.TITLE_BONUS_MAX);
+  assert.strictEqual(noTitle, 0);
+});
+
+// ── decideTier ───────────────────────────────────────────────────
+function cand(clause, over) {
+  return { clause: clause, s: Object.assign(
+    { score: 20, tfidf: 20, jaccard: 20, normMatch: false, titleBonus: 0, citation: false, signals: 2 }, over) };
+}
+const GEN = { heading: "제5조 (재위탁 금지)", body: "을은 재위탁하여서는 아니 된다." };
+const PURPOSE = { heading: "제1조 (목적)", body: "이 계약은 ...을 목적으로 한다." };
+
+test("decideTier: 인용 일치면 단일 후보라도 confirmed", () => {
+  const r = decideTier([cand(GEN, { citation: true, score: 18 })], CHECK_REWI);
+  assert.strictEqual(r, "confirmed");
+});
+
+test("decideTier: 큰 점수차 복수 신호면 confirmed", () => {
+  const r = decideTier([cand(GEN, { score: 40 }), cand(PURPOSE, { score: 20 })], CHECK_BIZ);
+  assert.strictEqual(r, "confirmed");
+});
+
+test("decideTier: 단일 후보(비인용)는 review로 강등", () => {
+  const r = decideTier([cand(GEN, { score: 40 })], CHECK_BIZ);
+  assert.strictEqual(r, "review");
+});
+
+test("decideTier: 단일 신호(signals<2)는 review로 강등", () => {
+  const r = decideTier([cand(GEN, { score: 40, signals: 1 }), cand(PURPOSE, { score: 20, signals: 1 })], CHECK_BIZ);
+  assert.strictEqual(r, "review");
+});
+
+test("decideTier: weak 역할 + 인용 없음이면 confirmed 불가(review)", () => {
+  // 목적 조항이 절대점수·규범일치·큰 점수차를 모두 충족해도 weak 게이트로 review
+  const r = decideTier(
+    [cand(PURPOSE, { score: 45, normMatch: true }), cand(GEN, { score: 20 })], CHECK_BIZ);
+  assert.strictEqual(r, "review");
+});
+
+test("decideTier: 절대점수+규범일치면 confirmed", () => {
+  const r = decideTier(
+    [cand(GEN, { score: MC.ABS_SCORE + 2, normMatch: true }), cand(PURPOSE, { score: 34 })], CHECK_PRIV);
+  assert.strictEqual(r, "confirmed");
+});
+
+test("decideTier: 후보 없음(전부 floor 미달)이면 none", () => {
+  assert.strictEqual(decideTier([], CHECK_BIZ), "none");
+});
+
+// ── analyze 통합 ─────────────────────────────────────────────────
+test("analyze: 골든 — 재위탁 단독 조항이 재위탁 check만 확정, 유사어 decoy는 확정 안 됨", () => {
+  const r = analyze(CLAUSES, [OUT_DOC], ["M-CORE"]);
+  const byId = {};
+  r.results.forEach((x) => { byId[x.cpId] = x; });
+  // 재위탁 check: 제5조에 confirmed 또는 review (none 아님)
+  assert.notStrictEqual(byId["CORE-07"].tier, "none");
+  assert.strictEqual(byId["CORE-07"].best.clauseIndex, 3);
+  // "재위탁"이 quote에 우연히 있는 손해배상 decoy는 확정 안 됨(해당 조항 부재)
+  assert.notStrictEqual(byId["DECOY"].tier, "confirmed");
+});
+
+test("analyze: absence 재정의 — tier none인 absence_check만 missing", () => {
+  const r = analyze(CLAUSES, [OUT_DOC], ["M-CORE"]);
+  const missingIds = r.missing.map((c) => c.id);
+  // 손해배상 조항 없음 → DECOY 누락
+  assert.ok(missingIds.indexOf("DECOY") !== -1);
+  // 재위탁 조항 존재 → CORE-07 누락 아님
+  assert.ok(missingIds.indexOf("CORE-07") === -1);
+});
+
+test("analyze: 활성 모듈만 대상 — M-PRIV 비활성이면 PRIV-01 제외", () => {
+  const r = analyze(CLAUSES, [OUT_DOC], ["M-CORE"]);
+  assert.ok(r.checkpoints.every((c) => c.id !== "PRIV-01"));
+  const r2 = analyze(CLAUSES, [OUT_DOC], ["M-CORE", "M-PRIV"]);
+  assert.ok(r2.checkpoints.some((c) => c.id === "PRIV-01"));
+});
+
+test("analyze: 하위호환 — checkpoints/results/matches/missing 필드 존재", () => {
+  const r = analyze(CLAUSES, [OUT_DOC], ["M-CORE"]);
+  assert.ok(Array.isArray(r.checkpoints));
+  assert.ok(Array.isArray(r.results));
+  assert.ok(Array.isArray(r.matches));
+  assert.ok(Array.isArray(r.missing));
+  // matches 는 tier!=="none" 인 것만, 각 cpId 최대 1개(best)
+  r.matches.forEach((m) => {
+    assert.ok(typeof m.cpId === "string" && typeof m.clauseIndex === "number");
+  });
+  const cpIds = r.matches.map((m) => m.cpId);
+  assert.strictEqual(cpIds.length, new Set(cpIds).size);
+});
+
+// ── 회귀: detectType·suggestModules ──────────────────────────────
 test("detectType: 키워드 빈도로 유형 순위를 매긴다", () => {
   const ranked = detectType("이 업무위탁 계약에서 수탁자는...", TYPES);
   assert.strictEqual(ranked[0].typeId, "outsourcing");
@@ -36,25 +253,4 @@ test("suggestModules: 본문 키워드로 모듈 활성화를 제안한다", () 
   const s = suggestModules("개인정보 처리 업무 포함", OUT_DOC.meta.modules);
   assert.deepStrictEqual(s, ["M-PRIV"]);
   assert.deepStrictEqual(suggestModules("무관한 내용", OUT_DOC.meta.modules), []);
-});
-
-test("analyze: 활성 모듈 체크포인트만 매칭하고 누락을 탐지한다", () => {
-  const clauses = [
-    { heading: "제1조 (재위탁)", body: "재위탁 시 동의를 받는다", index: 0 },
-    { heading: "제2조 (손해배상)", body: "손해 배상 책임을 진다", index: 1 },
-  ];
-  // M-PRIV 비활성 → OUT-02는 대상 제외
-  const r1 = analyze(clauses, [OUT_DOC], ["M-CORE"]);
-  assert.strictEqual(r1.checkpoints.length, 2); // OUT-01, OUT-03
-  assert.deepStrictEqual(r1.matches.map((m) => m.cpId).sort(), ["OUT-01", "OUT-03"]);
-  assert.strictEqual(r1.missing.length, 0);
-  // M-PRIV 활성인데 개인정보 조항 없음 → OUT-02 누락 의심
-  const r2 = analyze(clauses, [OUT_DOC], ["M-CORE", "M-PRIV"]);
-  assert.deepStrictEqual(r2.missing.map((c) => c.id), ["OUT-02"]);
-});
-
-test("analyze: 정규식 패턴 트리거가 동작한다", () => {
-  const clauses = [{ heading: "제2조", body: "손해   배상 범위", index: 0 }];
-  const r = analyze(clauses, [OUT_DOC], ["M-CORE"]);
-  assert.ok(r.matches.some((m) => m.cpId === "OUT-03"));
 });

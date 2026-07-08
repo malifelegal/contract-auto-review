@@ -157,16 +157,22 @@ checks:
   # ── M-NDA: 존속기간·반환·파기 ──
   - id: NDA-11
     module: M-NDA
-    check: 비밀유지의무의 존속기간(계약 종료 후 잔존 여부·기간)이 명시되어 있는가
+    check: 비밀유지의무의 존속기간이 무제한·영구가 아니라 영업비밀의 비공지성 유지기간에 정합하는 합리적 기간으로 설정되어 있는가
     severity: 참고
-    severity_basis: "실무 관행 항목(법령 강제 아님)"
-    norm_type: 실무
-    basis: practice
+    severity_basis: "선언규정임(영업비밀 정의·비공지성) — 부정경쟁방지 및 영업비밀보호에 관한 법률 제2조"
+    norm_type: 선언
+    basis: statute
     triggers:
-      keywords: [존속기간, 종료 후에도, 존속한다, 유지 기간, 비밀유지 기간]
-    absence_check: true
-    sources: []
-    note: 존속기간을 무제한 또는 과도하게 장기로 정한 경우 상대방에 부당하게 불리한 약정으로 유효성이 다투어질 수 있음 — 합리적 기간 설정 권장
+      keywords: [영구히, 무기한, 무제한, 존속기간, 기간의 정함이 없]
+    absence_check: false
+    sources:
+      - law: 부정경쟁방지 및 영업비밀보호에 관한 법률
+        article: 제2조
+        clause: 제2호(비공지성)
+        quote: '공공연히 알려져 있지 아니하고'
+        verified: false
+        source_type: law
+    note: 단순 존속기간 명시 여부는 공통(CMN-16)에서 확인 — 본 항목은 NDA 고유 쟁점. 영업비밀은 비공지성이 상실되면 보호가 종료되므로 존속기간이 정보의 성질·보호기간과 정합해야 함. 존속기간을 무제한·영구로 정한 경우 상대방에 부당하게 불리한 약정으로 유효성이 다투어질 수 있음
   - id: NDA-12
     module: M-NDA
     check: 계약 종료 또는 보유자 요청 시 비밀정보(사본 포함)의 반환·파기 의무 조항이 있는가

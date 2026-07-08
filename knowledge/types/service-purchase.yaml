@@ -1,7 +1,7 @@
 meta:
   type_id: service-purchase
   type_name: 일반 용역·구매
-  detect_keywords: [용역, 구매, 납품, 물품, 발주, 도급, 공급, 하도급]
+  detect_keywords: [납품, 구매, 물품, 발주, 검수, 용역, 도급, 공급, 하도급]
   modules:
     - id: M-PAY
       name: 대금·지급(하도급법)

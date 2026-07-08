@@ -46,10 +46,24 @@ test("clauseRole: 제6조(계약기간) → term/weak", () => {
   assert.strictEqual(r.weak, true);
 });
 
-test("clauseRole: 완전합의 표제 → general/weak (순수 내부합의성)", () => {
+test("clauseRole: 완전합의 표제 → general/weak (순수 boilerplate)", () => {
   const r = clauseRole("제15조(완전합의)", "이 계약은 당사자 간 완전한 합의를 구성하며 종전의 합의를 대체한다.");
   assert.strictEqual(r.role, "general");
   assert.strictEqual(r.weak, true);
+});
+
+// 회귀 방지: 통지·비용부담은 실체 규제의무일 수 있어 weak 게이트 대상이 아님(스펙: weak는
+// 목적·정의·전문·계약기간·완전합의 boilerplate 한정). general/weak=false 로 판정되어야 함.
+test("clauseRole: 제10조(통지) → general/!weak (통지의무는 실체조항)", () => {
+  const r = clauseRole("제10조(통지)", "을은 개인정보 유출 사실을 인지한 즉시 갑에게 통지하여야 한다.");
+  assert.strictEqual(r.role, "general");
+  assert.strictEqual(r.weak, false);
+});
+
+test("clauseRole: 제12조(비용부담) → general/!weak (비용부담은 실체조항)", () => {
+  const r = clauseRole("제12조(비용부담)", "위탁업무 수행에 소요되는 비용은 을이 부담한다.");
+  assert.strictEqual(r.role, "general");
+  assert.strictEqual(r.weak, false);
 });
 
 test("clauseRole: 표제 없는 실체조항 → general/!weak (본문도 declaration 패턴 무매치)", () => {

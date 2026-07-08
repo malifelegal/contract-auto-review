@@ -19,8 +19,8 @@ var ClauseRole = (function () {
     { re: /정의|용어/, role: "definition", weak: true },
     { re: /계약\s*기간|유효\s*기간/, role: "term", weak: true },
     { re: /완전\s*합의|완전한\s*합의/, role: "general", weak: true },
-    { re: /통지/, role: "general", weak: true },
-    { re: /비용\s*부담/, role: "general", weak: true },
+    // 통지·비용부담은 실체 규제의무(예: 개인정보 유출 통지)일 수 있어 weak 게이트 대상 아님.
+    // 표제 무매치 → general/weak=false 로 판정되게 두어 tier 게이트에서 자동확정 가능하게 함.
   ];
 
   // 표제가 없을 때만 본문 앞부분으로 보조 판정(comp preprocess.py declaration 정규식 차용).

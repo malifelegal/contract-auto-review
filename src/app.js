@@ -64,24 +64,45 @@ function evidenceCell(cp) {
   var lawText = src
     ? esc(src.law) + " " + esc(src.article) + (src.clause ? " " + esc(src.clause) : "")
     : "";
-  return (lawText ? lawText + " " : "") + '<span class="badge ' + badge.cls + '">' + badge.label + "</span>";
+  return (lawText ? lawText + " " : "") + '<span class="badge ' + badge.cls + '">' + badge.label + "</span>" +
+    (src ? sourceTypeBadgeHtml(src) : "");
 }
 
-/* ---------- tier 배지 (매칭 축 — 증적 배지와 별개) ---------- */
-var TIER_LABEL = { confirmed: "✓ 확정", review: "△ 검토" };
-var TIER_CLS = { confirmed: "tier-confirmed", review: "tier-review" };
-function tierBadgeHtml(tier) {
-  if (!TIER_LABEL[tier]) return "";
-  return '<span class="badge ' + TIER_CLS[tier] + '">' + TIER_LABEL[tier] + "</span>";
+/* ---------- coverage 배지 (계약 반영 축 — 증적 배지와 별개) ----------
+   검토 보조 화법: 판정형("확정/미검출") 폐기. 짚음/확인권장/검토제안/기타. */
+var COVERAGE_LABEL = {
+  addressed: "✓ 반영",
+  verify: "◑ 확인 권장",
+  consider: "! 검토 제안",
+  quiet: "·"
+};
+var COVERAGE_CLS = {
+  addressed: "cov-addressed",
+  verify: "cov-verify",
+  consider: "cov-consider",
+  quiet: "cov-quiet"
+};
+function coverageBadgeHtml(coverage) {
+  if (!COVERAGE_LABEL[coverage] || coverage === "quiet") return "";
+  return '<span class="badge ' + COVERAGE_CLS[coverage] + '">' + COVERAGE_LABEL[coverage] + "</span>";
+}
+/* source_type 배지 (법령 vs 자율규제 톤 구분) */
+function sourceTypeBadgeHtml(src) {
+  if (src && src.source_type === "self_regulation")
+    return ' <span class="badge self-reg">자율규제</span>';
+  return "";
 }
 
 /* ---------- 체크 카드 (조항별 보기·리포트 공용) ---------- */
 function renderCheckCard(cp, hits) {
-  var h = '<div class="cp-card"><h3><span class="sev sev-' + cp.severity + '">' +
+  var h = '<div class="cp-card"><h3><span class="sev sev-' + cp.severity + '" title="' +
+    esc(cp.severity_basis || "") + '">' +
     esc(cp.severity) + "</span>" + esc(cp.id) + " <span class=\"norm-type\">" + esc(cp.norm_type) + "</span></h3>";
   h += '<p class="check-q">' + esc(cp.check) + "</p>";
+  if (cp.severity_basis)
+    h += '<p class="sev-basis">' + esc(cp.severity_basis) + "</p>";
   if (hits) {
-    h += '<p class="hit">' + tierBadgeHtml(hits.tier) + " 매칭 (추정) — 점수 " + hits.score.toFixed(1) +
+    h += '<p class="hit">' + coverageBadgeHtml(hits.coverage) + " 관련 조항 — 점수 " + hits.score.toFixed(1) +
       ' <span class="reasons">' + esc((hits.reasons || []).join("; ")) + "</span></p>";
   }
   var src0 = primarySource(cp);
@@ -92,7 +113,7 @@ function renderCheckCard(cp, hits) {
   h += "<p>" + evidenceCell(cp) + "</p>";
   (cp.sources || []).forEach(function (src) {
     var label = esc(src.law) + " " + esc(src.article) + (src.clause ? " " + esc(src.clause) : "");
-    h += '<details class="law"><summary>' + label + " " + sourceBadgeHtml(src) + "</summary>";
+    h += '<details class="law"><summary>' + label + " " + sourceBadgeHtml(src) + sourceTypeBadgeHtml(src) + "</summary>";
     h += src.text ? "<pre>" + esc(src.text) + "</pre>" : "<p>원문 데이터 없음</p>";
     h += "</details>";
   });
@@ -116,21 +137,18 @@ document.querySelectorAll(".tab").forEach(function (btn) {
 });
 
 /* ---------- 체크리스트 표 (주 탭) ---------- */
-var TIER_RANK = { confirmed: 0, review: 1, none: 2 };
+// 정렬 우선순위: 검토 제안 → 확인 권장 → 반영 → 기타(조용) → 미분석/비활성
+var COVERAGE_RANK = { consider: 0, verify: 1, addressed: 2, quiet: 3 };
 function resultFor(cp) {
   if (!state.result) return null;
   return state.result.results.filter(function (x) { return x.cpId === cp.id; })[0] || null;
 }
 function checkStatus(cp) {
-  if (!state.result) return { cls: "", label: "—" };
+  if (!state.result) return { cls: "", label: "—", coverage: null };
   var r = resultFor(cp);
-  if (!r) return { cls: "", label: "—" }; // 이번 분석에서 비활성 모듈 체크
-  if (r.tier === "confirmed") return { cls: "tier-confirmed", label: TIER_LABEL.confirmed };
-  if (r.tier === "review") return { cls: "tier-review", label: TIER_LABEL.review };
-  // none: absence_check && none(= missing에 포함)이면 "미검출" 라벨. 그 외 none은 빈칸.
-  var isMissing = state.result.missing.some(function (m) { return m.id === cp.id; });
-  if (isMissing) return { cls: "tier-missing", label: "✗ 미검출" };
-  return { cls: "", label: "" }; // 비-absence none — 빈칸
+  if (!r) return { cls: "", label: "—", coverage: null }; // 이번 분석에서 비활성 모듈 체크
+  var cov = r.coverage;
+  return { cls: COVERAGE_CLS[cov] || "", label: COVERAGE_LABEL[cov] || "", coverage: cov };
 }
 
 function renderModuleGuideBar(modules) {
@@ -150,13 +168,15 @@ function renderModuleFilterOptions(modules) {
   if (stillExists) sel.value = prev;
 }
 
-function renderChecklistRow(cp, st, pinned) {
-  var rowCls = pinned ? "row-missing" : "";
+function renderChecklistRow(cp, st) {
+  var rowCls = st.coverage === "consider" ? "row-consider" : "";
+  var basis = cp.severity_basis || "";
   return '<tr class="cp-row ' + rowCls + '" data-id="' + esc(cp.id) + '">' +
     '<td class="match-cell ' + st.cls + '">' + esc(st.label) + "</td>" +
     "<td>" + esc(cp.id) + "</td>" +
     "<td>" + esc(cp.check) + "</td>" +
-    '<td><span class="sev sev-' + cp.severity + '">' + esc(cp.severity) + "</span></td>" +
+    '<td><span class="sev sev-' + cp.severity + '" title="' + esc(basis) + '">' + esc(cp.severity) + "</span>" +
+    (basis ? '<span class="sev-basis-hint">' + esc(basis) + "</span>" : "") + "</td>" +
     "<td>" + esc(cp.norm_type) + "</td>" +
     "<td>" + evidenceCell(cp) + "</td>" +
     "</tr>" +
@@ -172,7 +192,7 @@ function renderDetail(cp) {
   }
   (cp.sources || []).forEach(function (src) {
     var label = esc(src.law) + " " + esc(src.article) + (src.clause ? " " + esc(src.clause) : "");
-    h += '<details class="law"><summary>' + label + " " + sourceBadgeHtml(src) + "</summary>";
+    h += '<details class="law"><summary>' + label + " " + sourceBadgeHtml(src) + sourceTypeBadgeHtml(src) + "</summary>";
     h += src.text ? "<pre>" + esc(src.text) + "</pre>" : "<p>원문 데이터 없음</p>";
     h += "</details>";
   });
@@ -180,8 +200,8 @@ function renderDetail(cp) {
   if (r && r.tier !== "none" && r.best) {
     var clause = state.clauses[r.best.clauseIndex];
     var heading = clause ? clause.heading : ("조항#" + r.best.clauseIndex);
-    h += '<div class="match-excerpt"><p class="hit">' + tierBadgeHtml(r.tier) + " " +
-      esc(heading) + " 매칭 (추정) — 원문 확인 필요 · 점수 " + r.best.score.toFixed(1) +
+    h += '<div class="match-excerpt"><p class="hit">' + coverageBadgeHtml(r.coverage) + " " +
+      esc(heading) + " — 원문 확인 권장 · 점수 " + r.best.score.toFixed(1) +
       '<br><span class="reasons">' + esc((r.best.reasons || []).join("; ")) + "</span></p>";
     h += "<pre>" + esc(clause ? clause.body : "") + "</pre>";
     if (r.ranked && r.ranked.length > 1) {
@@ -224,22 +244,21 @@ function renderChecklist() {
   renderModuleFilterOptions(allModules);
 
   var base = allChecksForType(typeId);
-  var missingIds = {};
-  if (state.result) state.result.missing.forEach(function (m) { missingIds[m.id] = true; });
 
   var modF = document.getElementById("filter-module").value;
   var sevF = document.getElementById("filter-severity").value;
   var matchF = document.getElementById("filter-match").value;
   var q = document.getElementById("filter-search").value.trim();
 
-  function passFilter(cp, st, pinned) {
+  function passFilter(cp, st) {
     if (modF) {
       if (modF === "__none__") { if (cp.module) return false; }
       else if (cp.module !== modF) return false;
     }
     if (sevF && cp.severity !== sevF) return false;
-    if (matchF === "unmatched" && !pinned) return false;
-    if (matchF === "matched" && st.cls !== "tier-confirmed" && st.cls !== "tier-review") return false;
+    // matchF: unmatched="검토 제안만"(consider) / matched="반영·확인만"(addressed·verify)
+    if (matchF === "unmatched" && st.coverage !== "consider") return false;
+    if (matchF === "matched" && st.coverage !== "addressed" && st.coverage !== "verify") return false;
     if (q) {
       var src = primarySource(cp);
       var hay = cp.check + " " + (src ? src.law + " " + src.article : "");
@@ -248,30 +267,23 @@ function renderChecklist() {
     return true;
   }
 
-  var rows = [];
-  base.filter(function (cp) { return missingIds[cp.id]; }).forEach(function (cp) {
-    rows.push({ cp: cp, st: checkStatus(cp), pinned: true });
-  });
-  var restCps = base.filter(function (cp) { return !missingIds[cp.id]; });
+  // coverage 우선(consider→verify→addressed→quiet→미분석), 그 안에서 score 내림차순
+  var rows = base.map(function (cp) { return { cp: cp, st: checkStatus(cp) }; });
   if (state.result) {
-    // tier(confirmed→review→none) 우선, 그 안에서 score 내림차순 (스펙: 노이즈를 하단으로)
-    restCps = restCps.slice().sort(function (a, b) {
-      var ra = resultFor(a), rb = resultFor(b);
-      var ta = ra ? TIER_RANK[ra.tier] : TIER_RANK.none;
-      var tb = rb ? TIER_RANK[rb.tier] : TIER_RANK.none;
-      if (ta !== tb) return ta - tb;
-      var sa = ra && ra.best ? ra.best.score : -1;
-      var sb = rb && rb.best ? rb.best.score : -1;
+    rows.sort(function (a, b) {
+      var ra = COVERAGE_RANK[a.st.coverage]; if (ra === undefined) ra = 4;
+      var rb = COVERAGE_RANK[b.st.coverage]; if (rb === undefined) rb = 4;
+      if (ra !== rb) return ra - rb;
+      var la = resultFor(a.cp), lb = resultFor(b.cp);
+      var sa = la && la.best ? la.best.score : -1;
+      var sb = lb && lb.best ? lb.best.score : -1;
       return sb - sa;
     });
   }
-  restCps.forEach(function (cp) {
-    rows.push({ cp: cp, st: checkStatus(cp), pinned: false });
-  });
-  rows = rows.filter(function (r) { return passFilter(r.cp, r.st, r.pinned); });
+  rows = rows.filter(function (r) { return passFilter(r.cp, r.st); });
 
   document.getElementById("checklist-body").innerHTML =
-    rows.map(function (r) { return renderChecklistRow(r.cp, r.st, r.pinned); }).join("") ||
+    rows.map(function (r) { return renderChecklistRow(r.cp, r.st); }).join("") ||
     '<tr><td colspan="6" class="empty">조건에 맞는 항목 없음</td></tr>';
 
   bindRowClicks();
@@ -372,16 +384,45 @@ document.getElementById("btn-run").addEventListener("click", function () {
   document.querySelector('.tab[data-tab="checklist"]').click();
 });
 
-/* ---------- 조항별 보기 (보조 탭) ---------- */
+/* ---------- 조항별 보기 (보조 탭) — 좌우대비 ---------- */
+// 조항 하나에 대해: 좌 "반영된 검토항목"(그 조항이 best인 addressed) / 우 "추가 확인 제안"(verify).
+// results를 best.clauseIndex로 역인덱싱하여 coverage별로 모음.
+function _cpById(id) {
+  var cps = state.result.checkpoints;
+  for (var i = 0; i < cps.length; i++) if (cps[i].id === id) return cps[i];
+  return null;
+}
+// 검토항목 1건 요약: 심각도(+근거 툴팁) · 질문 · reason · 근거.
+function renderCompareItem(r) {
+  var cp = _cpById(r.cpId);
+  if (!cp) return "";
+  var reasons = (r.best && r.best.reasons) || [];
+  return '<div class="compare-item">' +
+    '<div class="ci-head"><span class="sev sev-' + cp.severity + '" title="' + esc(cp.severity_basis || "") + '">' +
+    esc(cp.severity) + "</span><span class=\"ci-id\">" + esc(cp.id) + "</span></div>" +
+    '<p class="ci-q">' + esc(cp.check) + "</p>" +
+    (reasons.length ? '<p class="ci-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
+    (cp.severity_basis ? '<p class="ci-basis">' + esc(cp.severity_basis) + "</p>" : "") +
+    '<p class="ci-src">' + evidenceCell(cp) + "</p>" +
+    "</div>";
+}
 function renderClauses() {
+  // ci -> { addressed:[r...], verify:[r...] }
   var byClause = {};
-  state.result.matches.forEach(function (m) {
-    (byClause[m.clauseIndex] = byClause[m.clauseIndex] || []).push(m);
+  state.result.results.forEach(function (r) {
+    if (!r.best || r.coverage === "quiet" || r.coverage === "consider") return;
+    var ci = r.best.clauseIndex;
+    var g = byClause[ci] || (byClause[ci] = { addressed: [], verify: [] });
+    if (r.coverage === "addressed") g.addressed.push(r);
+    else if (r.coverage === "verify") g.verify.push(r);
   });
   document.getElementById("clause-list").innerHTML = state.clauses.map(function (c) {
-    var n = (byClause[c.index] || []).length;
+    var g = byClause[c.index] || { addressed: [], verify: [] };
+    var parts = [];
+    if (g.addressed.length) parts.push("반영 " + g.addressed.length);
+    if (g.verify.length) parts.push("확인 " + g.verify.length);
     return '<div class="clause" data-ci="' + c.index + '"><strong>' + esc(c.heading) +
-      '</strong><span class="cnt">' + (n ? "관련 " + n + "건" : "") + "</span><pre>" +
+      '</strong><span class="cnt">' + esc(parts.join(" · ")) + "</span><pre>" +
       esc(c.body) + "</pre></div>";
   }).join("");
   document.querySelectorAll(".clause").forEach(function (el) {
@@ -389,12 +430,16 @@ function renderClauses() {
       document.querySelectorAll(".clause").forEach(function (x) { x.classList.remove("sel"); });
       el.classList.add("sel");
       var ci = Number(el.dataset.ci);
-      var cards = (byClause[ci] || []).map(function (m) {
-        var cp = state.result.checkpoints.filter(function (c) { return c.id === m.cpId; })[0];
-        return renderCheckCard(cp, m.hits);
-      });
+      var g = byClause[ci] || { addressed: [], verify: [] };
+      var left = g.addressed.map(renderCompareItem).join("") ||
+        '<p class="compare-empty">이 조항에서 반영으로 짚인 항목 없음</p>';
+      var right = g.verify.map(renderCompareItem).join("") ||
+        '<p class="compare-empty">추가 확인 제안 없음</p>';
       document.getElementById("mapping-detail").innerHTML =
-        cards.join("") || "<p>이 조항에 매핑된 체크포인트 없음</p>";
+        '<div class="clause-compare">' +
+        '<div class="compare-col addressed-col"><h3><span class="badge cov-addressed">✓ 반영</span> 이 조항에서 반영된 검토항목</h3>' + left + "</div>" +
+        '<div class="compare-col verify-col"><h3><span class="badge cov-verify">◑ 확인 권장</span> 추가 확인 제안</h3>' + right + "</div>" +
+        "</div>";
     });
   });
 }
@@ -411,10 +456,10 @@ function renderReport() {
   try { saved = JSON.parse(localStorage.getItem(key) || "{}"); } catch (e) {}
   var r = state.result;
   var h = "<h2>종합 리포트</h2>";
-  h += "<h3>누락 의심 (" + r.missing.length + ")</h3>";
+  h += "<h3>검토 제안 (" + r.missing.length + ")</h3>";
   h += r.missing.map(function (cp) {
-    return '<div class="cp-card missing-item">' + renderCheckCard(cp, null) + "</div>";
-  }).join("") || "<p>누락 의심 항목 없음</p>";
+    return '<div class="cp-card consider-item">' + renderCheckCard(cp, null) + "</div>";
+  }).join("") || "<p>검토 제안 항목 없음</p>";
   ["필수", "권장", "참고"].forEach(function (sev) {
     var ms = r.matches.filter(function (m) {
       var cp = r.checkpoints.filter(function (c) { return c.id === m.cpId; })[0];

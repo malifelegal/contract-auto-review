@@ -67,12 +67,23 @@ function evidenceCell(cp) {
   return (lawText ? lawText + " " : "") + '<span class="badge ' + badge.cls + '">' + badge.label + "</span>";
 }
 
+/* ---------- tier 배지 (매칭 축 — 증적 배지와 별개) ---------- */
+var TIER_LABEL = { confirmed: "✓ 확정", review: "△ 검토" };
+var TIER_CLS = { confirmed: "tier-confirmed", review: "tier-review" };
+function tierBadgeHtml(tier) {
+  if (!TIER_LABEL[tier]) return "";
+  return '<span class="badge ' + TIER_CLS[tier] + '">' + TIER_LABEL[tier] + "</span>";
+}
+
 /* ---------- 체크 카드 (조항별 보기·리포트 공용) ---------- */
 function renderCheckCard(cp, hits) {
   var h = '<div class="cp-card"><h3><span class="sev sev-' + cp.severity + '">' +
     esc(cp.severity) + "</span>" + esc(cp.id) + " <span class=\"norm-type\">" + esc(cp.norm_type) + "</span></h3>";
   h += '<p class="check-q">' + esc(cp.check) + "</p>";
-  if (hits) h += '<p class="hit">매칭: ' + esc(hits.keywords.concat(hits.patterns).join(", ")) + "</p>";
+  if (hits) {
+    h += '<p class="hit">' + tierBadgeHtml(hits.tier) + " 매칭 (추정) — 점수 " + hits.score.toFixed(1) +
+      ' <span class="reasons">' + esc((hits.reasons || []).join("; ")) + "</span></p>";
+  }
   var src0 = primarySource(cp);
   if (src0 && src0.quote) {
     h += '<div class="quote-block"><p class="quote-label">원문 발췌</p><blockquote>“' +
@@ -105,18 +116,18 @@ document.querySelectorAll(".tab").forEach(function (btn) {
 });
 
 /* ---------- 체크리스트 표 (주 탭) ---------- */
+var TIER_RANK = { confirmed: 0, review: 1, none: 2 };
+function resultFor(cp) {
+  if (!state.result) return null;
+  return state.result.results.filter(function (x) { return x.cpId === cp.id; })[0] || null;
+}
 function checkStatus(cp) {
   if (!state.result) return { cls: "", label: "—" };
-  var active = state.result.checkpoints.some(function (c) { return c.id === cp.id; });
-  if (!active) return { cls: "", label: "—" };
-  var m = state.result.matches.filter(function (x) { return x.cpId === cp.id; })[0];
-  if (m) {
-    var clause = state.clauses[m.clauseIndex];
-    var heading = clause ? clause.heading : ("조항#" + m.clauseIndex);
-    return { cls: "matched", label: "✓ " + heading + " (추정)" };
-  }
-  if (cp.absence_check) return { cls: "unmatched", label: "✗ 미검출" };
-  return { cls: "", label: "—" };
+  var r = resultFor(cp);
+  if (!r) return { cls: "", label: "—" }; // 이번 분석에서 비활성 모듈 체크
+  if (r.tier === "confirmed") return { cls: "tier-confirmed", label: TIER_LABEL.confirmed };
+  if (r.tier === "review") return { cls: "tier-review", label: TIER_LABEL.review };
+  return { cls: "", label: "" }; // none — 빈칸 (누락 여부는 행 고정으로 별도 표시)
 }
 
 function renderModuleGuideBar(modules) {
@@ -137,7 +148,7 @@ function renderModuleFilterOptions(modules) {
 }
 
 function renderChecklistRow(cp, st, pinned) {
-  var rowCls = (pinned ? "row-missing " : "") + (st.cls === "matched" ? "row-matched" : "");
+  var rowCls = pinned ? "row-missing" : "";
   return '<tr class="cp-row ' + rowCls + '" data-id="' + esc(cp.id) + '">' +
     '<td class="match-cell ' + st.cls + '">' + esc(st.label) + "</td>" +
     "<td>" + esc(cp.id) + "</td>" +
@@ -162,14 +173,21 @@ function renderDetail(cp) {
     h += src.text ? "<pre>" + esc(src.text) + "</pre>" : "<p>원문 데이터 없음</p>";
     h += "</details>";
   });
-  if (state.result) {
-    var m = state.result.matches.filter(function (x) { return x.cpId === cp.id; })[0];
-    if (m) {
-      var clause = state.clauses[m.clauseIndex];
-      h += '<div class="match-excerpt"><p class="hit">키워드 추정 매칭 — 원문 확인 필요 (매칭: ' +
-        esc((m.hits.keywords || []).concat(m.hits.patterns || []).join(", ")) + ")</p>";
-      h += "<pre>" + esc(clause ? clause.body : "") + "</pre></div>";
+  var r = resultFor(cp);
+  if (r && r.tier !== "none" && r.best) {
+    var clause = state.clauses[r.best.clauseIndex];
+    var heading = clause ? clause.heading : ("조항#" + r.best.clauseIndex);
+    h += '<div class="match-excerpt"><p class="hit">' + tierBadgeHtml(r.tier) + " " +
+      esc(heading) + " 매칭 (추정) — 원문 확인 필요 · 점수 " + r.best.score.toFixed(1) +
+      '<br><span class="reasons">' + esc((r.best.reasons || []).join("; ")) + "</span></p>";
+    h += "<pre>" + esc(clause ? clause.body : "") + "</pre>";
+    if (r.ranked && r.ranked.length > 1) {
+      h += '<p class="ranked-alt">다른 후보(점수순): ' + r.ranked.slice(1).map(function (rk) {
+        var c = state.clauses[rk.clauseIndex];
+        return esc(c ? c.heading : ("조항#" + rk.clauseIndex)) + " (" + rk.score.toFixed(1) + ")";
+      }).join(", ") + "</p>";
     }
+    h += "</div>";
   }
   if (cp.note) h += '<p class="note">비고: ' + esc(cp.note) + "</p>";
   return h || "<p>상세 정보 없음</p>";
@@ -211,14 +229,14 @@ function renderChecklist() {
   var matchF = document.getElementById("filter-match").value;
   var q = document.getElementById("filter-search").value.trim();
 
-  function passFilter(cp, st) {
+  function passFilter(cp, st, pinned) {
     if (modF) {
       if (modF === "__none__") { if (cp.module) return false; }
       else if (cp.module !== modF) return false;
     }
     if (sevF && cp.severity !== sevF) return false;
-    if (matchF === "unmatched" && st.cls !== "unmatched") return false;
-    if (matchF === "matched" && st.cls !== "matched") return false;
+    if (matchF === "unmatched" && !pinned) return false;
+    if (matchF === "matched" && st.cls !== "tier-confirmed" && st.cls !== "tier-review") return false;
     if (q) {
       var src = primarySource(cp);
       var hay = cp.check + " " + (src ? src.law + " " + src.article : "");
@@ -231,10 +249,23 @@ function renderChecklist() {
   base.filter(function (cp) { return missingIds[cp.id]; }).forEach(function (cp) {
     rows.push({ cp: cp, st: checkStatus(cp), pinned: true });
   });
-  base.filter(function (cp) { return !missingIds[cp.id]; }).forEach(function (cp) {
+  var restCps = base.filter(function (cp) { return !missingIds[cp.id]; });
+  if (state.result) {
+    // tier(confirmed→review→none) 우선, 그 안에서 score 내림차순 (스펙: 노이즈를 하단으로)
+    restCps = restCps.slice().sort(function (a, b) {
+      var ra = resultFor(a), rb = resultFor(b);
+      var ta = ra ? TIER_RANK[ra.tier] : TIER_RANK.none;
+      var tb = rb ? TIER_RANK[rb.tier] : TIER_RANK.none;
+      if (ta !== tb) return ta - tb;
+      var sa = ra && ra.best ? ra.best.score : -1;
+      var sb = rb && rb.best ? rb.best.score : -1;
+      return sb - sa;
+    });
+  }
+  restCps.forEach(function (cp) {
     rows.push({ cp: cp, st: checkStatus(cp), pinned: false });
   });
-  rows = rows.filter(function (r) { return passFilter(r.cp, r.st); });
+  rows = rows.filter(function (r) { return passFilter(r.cp, r.st, r.pinned); });
 
   document.getElementById("checklist-body").innerHTML =
     rows.map(function (r) { return renderChecklistRow(r.cp, r.st, r.pinned); }).join("") ||

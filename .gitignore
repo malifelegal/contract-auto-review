@@ -3,3 +3,4 @@ __pycache__/
 .DS_Store
 .omc/
 .claude/
+data/verification_log.json

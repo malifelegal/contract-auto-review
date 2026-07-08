@@ -614,3 +614,115 @@ window.addEventListener("afterprint", function () {
 
 initChecklistType();
 renderChecklist();
+
+/* ---------- 검수 탭 ---------- */
+var VERIFY_KEY = "cr-verify-decisions";
+var verifyDecisions = {};
+try { verifyDecisions = JSON.parse(localStorage.getItem(VERIFY_KEY) || "{}"); } catch (e) {}
+var verifyItems = Verify.buildVerifyItems(CR);
+
+function saveVerify() { localStorage.setItem(VERIFY_KEY, JSON.stringify(verifyDecisions)); }
+
+function initVerify() {
+  var tsel = document.getElementById("verify-type");
+  var types = [{ id: "", name: "전체 유형" }];
+  if (CR.common.meta) types.push({ id: "common", name: CR.common.meta.type_name || "공통" });
+  CR.types.forEach(function (t) { types.push({ id: t.meta.type_id, name: t.meta.type_name }); });
+  tsel.innerHTML = types.map(function (t) {
+    return '<option value="' + esc(t.id) + '">' + esc(t.name) + "</option>";
+  }).join("");
+  tsel.addEventListener("change", renderVerify);
+  document.getElementById("verify-filter").addEventListener("change", renderVerify);
+  document.getElementById("verify-export").addEventListener("click", exportVerify);
+  renderVerify();
+}
+
+var SEV_CLS = { "필수": "sev-필수", "권장": "sev-권장", "참고": "sev-참고" };
+var DEC_LABEL = { "확인": "확인", "수정필요": "수정 필요", "보류": "보류" };
+
+function renderVerify() {
+  var p = Verify.verifyProgress(verifyItems, verifyDecisions);
+  document.getElementById("verify-progress").textContent =
+    "statute 근거 " + p.total + "개 · 확인 " + p.confirmed + " / 수정필요 " + p.needsfix + " / 미검수 " + p.pending;
+  var filter = { mode: document.getElementById("verify-filter").value, typeId: document.getElementById("verify-type").value };
+  var shown = Verify.filterItems(verifyItems, verifyDecisions, filter);
+  document.getElementById("verify-list").innerHTML = shown.map(renderVerifyCard).join("") || "<p>해당 항목 없음</p>";
+  bindVerifyButtons();
+}
+
+function renderVerifyCard(it) {
+  if (it.isPractice) {
+    return '<div class="verify-card practice"><h3><span class="sev ' + (SEV_CLS[it.severity] || "") + '">' +
+      esc(it.severity) + "</span>" + esc(it.checkId) + " " + esc(it.check) +
+      '</h3><p class="practice-note">실무 항목 — 법령 근거 없음(검수 대상 아님)</p></div>';
+  }
+  var h = '<div class="verify-card"><h3><span class="sev ' + (SEV_CLS[it.severity] || "") + '">' +
+    esc(it.severity) + "</span>" + esc(it.checkId) + " " + esc(it.check) + "</h3>";
+  if (it.severityBasis) h += '<p class="sev-basis">근거: ' + esc(it.severityBasis) + "</p>";
+  if (it.note) h += '<p class="cp-note">' + esc(it.note) + "</p>";
+  it.sources.forEach(function (s) {
+    var key = Verify.sourceKey(it.checkId, s.index);
+    var st = Verify.srcState(it, s, verifyDecisions);
+    h += '<div class="verify-src">';
+    h += '<div class="src-head">' + esc(s.law) + " " + esc(s.article) + (s.clause ? " " + esc(s.clause) : "") + "</div>";
+    h += '<div class="compare">';
+    h += '<div class="cmp-quote"><div class="cmp-label">발췌(quote)</div><blockquote>' + esc(s.quote) + "</blockquote></div>";
+    h += '<div class="cmp-text"><div class="cmp-label">DB 원문</div><pre>' + highlightText(s.quote, s.text) + "</pre></div>";
+    h += "</div>";
+    if (s.verified) {
+      h += '<div class="src-decided verified">이미 확인됨(verified)</div>';
+    } else {
+      h += '<div class="decide" data-key="' + esc(key) + '">' +
+        ["확인", "보류", "수정필요"].map(function (d) {
+          return '<button class="dec-btn' + (st === d ? " active dec-" + d : "") + '" data-dec="' + d + '">' + DEC_LABEL[d] + "</button>";
+        }).join("") +
+        '<input class="dec-note" data-key="' + esc(key) + '" placeholder="수정 필요 메모" value="' +
+        esc((verifyDecisions[key] && verifyDecisions[key].note) || "") + '"></div>';
+    }
+    h += "</div>";
+  });
+  return h + "</div>";
+}
+
+function highlightText(quote, text) {
+  var r = Verify.findHighlight(quote, text);
+  if (!r) return esc(text);
+  return esc(text.slice(0, r[0])) + '<mark>' + esc(text.slice(r[0], r[1])) + "</mark>" + esc(text.slice(r[1]));
+}
+
+function bindVerifyButtons() {
+  document.querySelectorAll("#verify-list .dec-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var key = btn.parentNode.getAttribute("data-key");
+      var dec = btn.getAttribute("data-dec");
+      var note = (verifyDecisions[key] && verifyDecisions[key].note) || "";
+      verifyDecisions[key] = { decision: dec, note: note, date: verifyToday() };
+      saveVerify();
+      renderVerify();
+    });
+  });
+  document.querySelectorAll("#verify-list .dec-note").forEach(function (inp) {
+    inp.addEventListener("change", function () {
+      var key = inp.getAttribute("data-key");
+      if (!verifyDecisions[key]) verifyDecisions[key] = { decision: "수정필요", date: verifyToday() };
+      verifyDecisions[key].note = inp.value;
+      saveVerify();
+    });
+  });
+}
+
+function verifyToday() {
+  var d = new Date();
+  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+
+function exportVerify() {
+  var blob = new Blob([Verify.exportJson(verifyDecisions)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "verification.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+initVerify();

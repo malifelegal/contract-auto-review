@@ -173,3 +173,26 @@ td.empty { text-align: center; color: #889; padding: 24px; }
                .report-tiles { break-inside: avoid; }
                .report-item, .tile { break-inside: avoid; }
                .report-sec, .report-more { border: none; padding: 0; } }
+
+.verify-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.verify-progress { font-weight: 600; }
+.verify-card { border: 1px solid #dde; border-radius: 8px; padding: 14px; margin-bottom: 14px; background: #fff; }
+.verify-card.practice { opacity: .6; }
+.verify-card h3 { margin: 0 0 6px; font-size: 15px; }
+.verify-card .sev-basis { color: #556; font-size: 13px; margin: 2px 0; }
+.verify-card .cp-note { color: #667; font-size: 13px; }
+.verify-src { border-top: 1px solid #eef; margin-top: 10px; padding-top: 10px; }
+.src-head { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.cmp-label { font-size: 11px; color: #889; margin-bottom: 4px; }
+.cmp-quote blockquote { margin: 0; padding: 8px 10px; background: #eef6ff; border-left: 3px solid #4a90d9; font-size: 13px; }
+.cmp-text pre { margin: 0; padding: 8px 10px; background: #f7f8fa; border-radius: 4px; white-space: pre-wrap; font-size: 13px; max-height: 220px; overflow: auto; }
+.cmp-text mark { background: #ffe08a; }
+.decide { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+.dec-btn { border: 1px solid #ccd; background: #fff; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+.dec-btn.active.dec-확인 { background: #1f9d55; color: #fff; border-color: #1f9d55; }
+.dec-btn.active.dec-보류 { background: #b9902a; color: #fff; border-color: #b9902a; }
+.dec-btn.active.dec-수정필요 { background: #c0392b; color: #fff; border-color: #c0392b; }
+.dec-note { flex: 1; min-width: 160px; padding: 5px 8px; border: 1px solid #ccd; border-radius: 6px; font-size: 13px; }
+.src-decided.verified { margin-top: 8px; color: #1f9d55; font-weight: 600; font-size: 13px; }
+@media (max-width: 720px) { .compare { grid-template-columns: 1fr; } }

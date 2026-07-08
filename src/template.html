@@ -13,6 +13,7 @@
     <button data-tab="checklist" class="tab active">체크리스트</button>
     <button data-tab="clauses" class="tab">조항별 보기</button>
     <button data-tab="report" class="tab" id="report-tab" disabled>리포트</button>
+    <button data-tab="verify" class="tab">검수</button>
   </nav>
 </header>
 
@@ -74,6 +75,23 @@
   <section id="pane-report" class="pane">
     <div id="report-body"></div>
     <button onclick="window.print()">인쇄</button>
+  </section>
+
+  <section id="pane-verify" class="pane">
+    <div class="verify-bar">
+      <span id="verify-progress" class="verify-progress"></span>
+      <label>유형 <select id="verify-type"></select></label>
+      <label>상태
+        <select id="verify-filter">
+          <option value="all">전체</option>
+          <option value="unreviewed">미검수만</option>
+          <option value="needsfix">수정 필요만</option>
+          <option value="confirmed">확인됨</option>
+        </select>
+      </label>
+      <button id="verify-export" class="primary">판정 내보내기</button>
+    </div>
+    <div id="verify-list"></div>
   </section>
 </main>
 

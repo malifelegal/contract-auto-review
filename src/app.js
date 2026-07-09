@@ -25,6 +25,14 @@ function findCheck(id) {
 function primarySource(cp) {
   return (cp.sources && cp.sources[0]) || null;
 }
+// 짧은 라벨(있으면) 우선 — 해석 부담 완화(#4). 상세 질문은 check.
+function cpLabel(cp) { return cp.label || cp.check; }
+function hasLabel(cp) { return !!(cp.label && cp.label !== cp.check); }
+// 라벨 우선 표기 HTML(cls 컨테이너 안). 라벨 없으면 check만.
+function labelQ(cp) {
+  if (hasLabel(cp)) return '<span class="lq-label">' + esc(cp.label) + '</span><span class="lq-detail">' + esc(cp.check) + "</span>";
+  return esc(cp.check);
+}
 
 /* ---------- 증적 배지 ---------- */
 function sourceBadgeInfo(src) {
@@ -176,7 +184,9 @@ function renderChecklistRow(cp, st) {
   return '<tr class="cp-row ' + rowCls + '" data-id="' + esc(cp.id) + '">' +
     '<td class="match-cell ' + st.cls + '">' + esc(st.label) + "</td>" +
     "<td>" + esc(cp.id) + "</td>" +
-    "<td>" + esc(cp.check) + "</td>" +
+    "<td>" + (hasLabel(cp)
+      ? '<span class="cp-label">' + esc(cp.label) + '</span><span class="cp-detail-q">' + esc(cp.check) + "</span>"
+      : esc(cp.check)) + "</td>" +
     '<td><span class="sev sev-' + cp.severity + '" title="' + esc(basis) + '">' + esc(cp.severity) + "</span>" +
     (basis ? '<span class="sev-basis-hint">' + esc(basis) + "</span>" : "") + "</td>" +
     "<td>" + esc(cp.norm_type) + "</td>" +
@@ -519,7 +529,7 @@ function renderCompareItem(r) {
   return '<div class="compare-item">' +
     '<div class="ci-head"><span class="sev sev-' + cp.severity + '" title="' + esc(cp.severity_basis || "") + '">' +
     esc(cp.severity) + "</span><span class=\"ci-id\">" + esc(cp.id) + "</span></div>" +
-    '<p class="ci-q">' + esc(cp.check) + "</p>" +
+    '<p class="ci-q">' + labelQ(cp) + "</p>" +
     (reasons.length ? '<p class="ci-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
     (cp.severity_basis ? '<p class="ci-basis">' + esc(cp.severity_basis) + "</p>" : "") +
     '<p class="ci-src">' + evidenceCell(cp) + "</p>" +
@@ -533,7 +543,7 @@ function renderConsiderItem(r) {
   return '<div class="compare-item consider-item">' +
     '<div class="ci-head"><span class="sev sev-' + cp.severity + '" title="' + esc(cp.severity_basis || "") + '">' +
     esc(cp.severity) + "</span><span class=\"ci-id\">" + esc(cp.id) + "</span></div>" +
-    '<p class="ci-q">' + esc(cp.check) + "</p>" +
+    '<p class="ci-q">' + labelQ(cp) + "</p>" +
     (cp.severity_basis ? '<p class="ci-basis">왜 봐야 하는지: ' + esc(cp.severity_basis) + "</p>" : "") +
     '<p class="ci-src">근거 ' + evidenceCell(cp) + "</p>" +
     verdictControlHtml(cp.id) +
@@ -681,7 +691,7 @@ function _considerItem(it, saved) {
   return '<div class="report-item consider-item">' +
     '<div class="ri-head"><span class="sev sev-' + cp.severity + '" title="' +
     esc(cp.severity_basis || "") + '">' + esc(cp.severity) + "</span>" +
-    '<span class="ri-q">' + esc(cp.check) + "</span>" + _verdictBadge(cp.id) + "</div>" +
+    '<span class="ri-q">' + labelQ(cp) + "</span>" + _verdictBadge(cp.id) + "</div>" +
     (cp.severity_basis ? '<p class="ri-why">왜 봐야 하는지: ' + esc(cp.severity_basis) + "</p>" : "") +
     '<p class="ri-src">근거 ' + evidenceCell(cp) + "</p>" +
     _signoff(cp, saved) + "</div>";
@@ -694,7 +704,7 @@ function _verifyItem(it, saved) {
   return '<div class="report-item verify-item">' +
     '<div class="ri-head"><span class="sev sev-' + cp.severity + '" title="' +
     esc(cp.severity_basis || "") + '">' + esc(cp.severity) + "</span>" +
-    '<span class="ri-q">' + esc(cp.check) + "</span>" + _verdictBadge(cp.id) + "</div>" +
+    '<span class="ri-q">' + labelQ(cp) + "</span>" + _verdictBadge(cp.id) + "</div>" +
     (loc ? '<p class="ri-loc">관련 조항: ' + esc(loc) + "</p>" : "") +
     (reasons.length ? '<p class="ri-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
     _signoff(cp, saved) + "</div>";
@@ -706,7 +716,7 @@ function _addressedItem(it) {
   var reasons = (res.best && res.best.reasons) || [];
   return '<div class="report-item addressed-item">' +
     '<div class="ri-head"><span class="badge cov-addressed">✓ 반영</span>' +
-    '<span class="ri-q">' + esc(cp.check) + "</span>" + _verdictBadge(cp.id) + "</div>" +
+    '<span class="ri-q">' + labelQ(cp) + "</span>" + _verdictBadge(cp.id) + "</div>" +
     (loc ? '<p class="ri-loc">' + esc(loc) + "에서 반영</p>" : "") +
     (reasons.length ? '<p class="ri-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
     "</div>";

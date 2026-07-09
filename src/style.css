@@ -243,3 +243,14 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 .consider-panel { background: #fff; border: 1px solid #e0e2ee; border-radius: 8px; padding: 12px 14px; border-top: 3px solid #e0a83e; }
 .consider-panel h3 { margin: 0 0 8px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
 .consider-hint { font-size: 12px; color: #778; margin: 0 0 12px; }
+
+/* 심각도 정의 패널(#5) */
+.sev-legend { background: #fff; border: 1px solid #e0e2ee; border-radius: 8px; padding: 4px 14px; margin-bottom: 12px; }
+.sev-legend summary { cursor: pointer; padding: 8px 0; font-size: 13px; font-weight: 600; color: #445; }
+.sev-legend ul { list-style: none; padding: 0; margin: 6px 0; }
+.sev-legend li { font-size: 13px; color: #556; padding: 5px 0; line-height: 1.5; }
+.sev-legend-note { font-size: 12px; color: #778; margin: 6px 0 10px; }
+
+/* 짧은 라벨 우선 표기(#4) */
+.cp-label, .lq-label { display: block; font-weight: 600; font-size: 13px; color: #1a1a2e; }
+.cp-detail-q, .lq-detail { display: block; font-size: 12px; color: #778; margin-top: 3px; line-height: 1.4; }

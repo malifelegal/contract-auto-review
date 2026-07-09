@@ -1,7 +1,7 @@
 meta:
   type_id: it-outsourcing
   type_name: IT외주·전산용역
-  detect_keywords: [전산, 시스템 개발, 소프트웨어, SI, 정보시스템, 정보처리, 전산용역, 외주, 유지보수]
+  detect_keywords: [전산, 시스템 개발, 소프트웨어, SI, 정보시스템, 정보처리, 전산용역, 외주, 유지보수, 시스템 구축, 시스템 고도화, 솔루션 도입, 프로그램 개발, 서비스 이용계약, 라이선스, 클라우드, SaaS]
   modules:
     - id: M-ITSEC
       name: 전산외주 보안·외주인력 통제

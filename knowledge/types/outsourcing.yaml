@@ -1,7 +1,7 @@
 meta:
   type_id: outsourcing
   type_name: 업무위탁
-  detect_keywords: [위탁, 수탁, 업무위탁, 위탁업무, 수탁자]
+  detect_keywords: [위탁, 수탁, 업무위탁, 위탁업무, 수탁자, 대행, 업무 대행, 콜센터, 심사 위탁, 사무 위탁, 운영 대행]
   modules:
     - id: M-CORE
       name: 업무위탁 기본(금융권)

@@ -337,9 +337,22 @@ document.getElementById("btn-analyze").addEventListener("click", function () {
   if (ranked[0] && ranked[0].score > 0) sel.value = ranked[0].typeId;
   state.typeId = sel.value;
   renderScreening();
+  renderTags();
   document.getElementById("analyze-setup").hidden = false;
   runAnalysis();
 });
+
+/* ---------- 자동 마킹 태그 (계약 세부 성격) ---------- */
+// 계약서 앞부분(제목·전문 위주 500자)에서 성격 태그를 감지해 보조 배지로 표시.
+// 유형과 독립 — 유형 선택 부담 없이 "이 계약은 렌탈·변경건·투자성" 등을 자동 마킹.
+function renderTags() {
+  var head = String(state.text || "").slice(0, 500);
+  var tags = Tags.detectTags(head);
+  var bar = document.getElementById("tag-bar");
+  if (!tags.length) { bar.innerHTML = ""; return; }
+  bar.innerHTML = '<span class="tag-bar-label">자동 감지 성격:</span> ' +
+    tags.map(function (t) { return '<span class="ctag">' + esc(t) + "</span>"; }).join(" ");
+}
 
 /* ---------- 분석 모드: 모듈 스크리닝 ---------- */
 function renderScreening() {

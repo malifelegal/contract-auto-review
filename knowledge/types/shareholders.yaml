@@ -1,7 +1,7 @@
 meta:
   type_id: shareholders
   type_name: 주주간계약·합의서
-  detect_keywords: [주주간, 주주간계약, 주식양도, 지분양도, 의결권, 우선매수, 동반매도, 태그얼롱, 드래그, 합의서]
+  detect_keywords: [주주간, 주주간계약, 주식양도, 지분양도, 의결권, 우선매수, 동반매도, 태그얼롱, 드래그, 합의서, 주식양수도, 지분매매, 출자전환, 신주인수]
   modules:
     - id: M-SHARE
       name: 주식 처분 통제(양도제한·우선매수·동반매도)

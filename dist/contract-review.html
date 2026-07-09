@@ -1507,13 +1507,16 @@ function renderChecklist() {
     return true;
   }
 
-  // coverage 우선(consider→verify→addressed→quiet→미분석), 그 안에서 score 내림차순
+  // coverage 우선(consider→verify→addressed→quiet→미분석) → 심각도순(필수→권장→참고) → score 내림차순
   var rows = base.map(function (cp) { return { cp: cp, st: checkStatus(cp) }; });
   if (state.result) {
     rows.sort(function (a, b) {
       var ra = COVERAGE_RANK[a.st.coverage]; if (ra === undefined) ra = 4;
       var rb = COVERAGE_RANK[b.st.coverage]; if (rb === undefined) rb = 4;
       if (ra !== rb) return ra - rb;
+      var sva = SEV_RANK[a.cp.severity]; if (sva === undefined) sva = 3;
+      var svb = SEV_RANK[b.cp.severity]; if (svb === undefined) svb = 3;
+      if (sva !== svb) return sva - svb; // 같은 coverage 안에서 심각도(필수 먼저)
       var la = resultFor(a.cp), lb = resultFor(b.cp);
       var sa = la && la.best ? la.best.score : -1;
       var sb = lb && lb.best ? lb.best.score : -1;

@@ -4,3 +4,4 @@ __pycache__/
 .omc/
 .claude/
 data/verification_log.json
+verifications/*.json

@@ -91,6 +91,11 @@ docs/               설계·구현 문서 (specs / plans)
 
 브랜치·커밋 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md) 참조.
 
+## 협업 — 분산 검수
+
+여럿이 지식을 나눠 검수하고 한 명이 취합해 반영하는 흐름은 [docs/collaboration.md](docs/collaboration.md) 참조.
+각자 브라우저 검수 탭에서 판정 → `verification.json` 내보내기 → `build/merge_verifications.py`로 병합 → `build/apply_verification.py`로 승급.
+
 ## 고지
 
 본 도구는 규칙 기반 스크리닝 참고자료이며 법적 판단을 대체하지 않는다.

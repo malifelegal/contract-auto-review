@@ -224,3 +224,15 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 .tag-bar-label { color: #667; }
 .ctag { display: inline-block; background: #eef2f8; color: #46618c; border: 1px solid #d5deec;
         border-radius: 12px; padding: 2px 10px; font-size: 12px; margin-right: 4px; }
+
+/* 리포트 결론 배너(#7) + 필수 강조(#3) */
+.report-concl { display: flex; align-items: baseline; gap: 10px; padding: 12px 16px; border-radius: 8px;
+                margin: 4px 0 12px; font-size: 15px; font-weight: 600; line-height: 1.5; }
+.report-concl .concl-label { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px;
+                background: rgba(255,255,255,.7); flex-shrink: 0; }
+.concl-alert { background: #fdecea; color: #b32b1f; border: 1px solid #f0b4ab; }
+.concl-caution { background: #fef6e7; color: #9a6a10; border: 1px solid #f2d492; }
+.concl-ok { background: #e9f7ef; color: #1c7a44; border: 1px solid #b6e2c8; }
+.tile-consider.tile-must { border-top-color: #c0392b; }
+.tile-consider.tile-must .tile-n { color: #c0392b; }
+.tile-consider.tile-must .tile-sub { color: #c0392b; font-weight: 600; }

@@ -696,13 +696,34 @@ function renderReport() {
   addressed.sort(_sevSort); verify.sort(_sevSort); consider.sort(_sevSort);
 
   var h = "<h2>검토 워크시트</h2>";
-  h += '<p class="report-intro">이 계약서에서 아래와 같이 검토됨. 반영된 항목을 먼저 두고, 확인·검토 제안을 정리함. 각 항목은 검토 후 “검토 완료 표시”로 남길 수 있음.</p>';
+
+  // 0) 결론 배너 — 근거보다 먼저, 필수 미반영을 색으로 강조(#3·#7)
+  //    필수 검토제안(consider·필수)이 "꼭 들어가야 하는데 안 들어간" 핵심 알람.
+  var mustConsider = consider.filter(function (it) { return it.severity === "필수"; });
+  var recConsider = consider.filter(function (it) { return it.severity === "권장"; });
+  var conclCls, conclText;
+  if (mustConsider.length) {
+    conclCls = "concl-alert";
+    conclText = "필수 검토항목 " + mustConsider.length + "건이 계약서에서 확인되지 않음 — 우선 확인 필요.";
+  } else if (recConsider.length || verify.length) {
+    conclCls = "concl-caution";
+    conclText = "필수 항목은 모두 관련 조항에 닿음. 권장 검토제안 " + recConsider.length +
+      "건 · 문구 확인 권장 " + verify.length + "건을 살펴볼 것.";
+  } else {
+    conclCls = "concl-ok";
+    conclText = "필수·권장 검토항목이 모두 관련 조항에 닿음. 큰 공백은 보이지 않음.";
+  }
+  h += '<div class="report-concl ' + conclCls + '"><span class="concl-label">결론</span>' + esc(conclText) + "</div>";
+  h += '<p class="report-intro">아래는 그 근거 — 반영된 항목·확인 권장·검토 제안을 심각도순으로 정리함. 각 항목은 검토 후 “검토 완료 표시”로 남길 수 있음.</p>';
 
   // 1) 긍정 먼저 요약 타일
+  var considerSub = mustConsider.length
+    ? "필수 " + mustConsider.length + "건 미반영"
+    : "필요한 계약인지 검토";
   h += '<div class="report-tiles">' +
     _reportTile("addressed", addressed.length, "짚어진 항목", "계약서가 반영함") +
     _reportTile("verify", verify.length, "확인 권장", "관련 조항 있음 · 문구 확인") +
-    _reportTile("consider", consider.length, "검토 제안", "필요한 계약인지 검토") +
+    _reportTile("consider" + (mustConsider.length ? " tile-must" : ""), consider.length, "검토 제안", considerSub) +
     "</div>";
 
   // 1-b) 검토의견 요약 + 개진 항목(코멘트 있는 것) — 결론성 정보

@@ -588,6 +588,8 @@ var MatcherConfig = {
   SHORT_LEN: 120,       // 짧은 조항 판정 본문 길이(자)
   NORM_BONUS: 3,        // 규범유형 일치 가산
   TITLE_BONUS_MAX: 5,   // 표제 용어 겹침 가산 상한
+  OVERLAP_MIN: 2,       // 노출(verify/addressed) 자격 최소 고유 핵심어 겹침 — 단일 겹침은 quiet 강등
+  TITLE_STRONG_RATIO: 0.5, // 표제 강일치 예외: 조항 표제 핵심어 중 check와 겹친 비율 하한
   ALARM_SEVERITIES: ["필수", "권장"] // 검토 제안(consider) 알람 게이트 — 참고 부재는 조용(quiet)
 };
 
@@ -772,6 +774,35 @@ function titleBonus(clause, checkTextStr) {
   return Math.min(overlap * 2, MatcherConfig.TITLE_BONUS_MAX);
 }
 
+// ── 핵심어 겹침 게이트 (노출 자격) ───────────────────────────────
+// char n-gram TF-IDF는 어절 하나만 겹쳐도 REVIEW_FLOOR를 넘길 수 있어 약한 후보를
+// 대량 노출한다. 노출(verify/addressed)에는 "고유 핵심어(2글자+ 한글) 복수 겹침"을 요구.
+// 예외: (a) 명시 인용, (b) 조항 표제와 강일치 — 표제어 겹침은 본문어보다 신뢰도가 높음.
+//   uniq         = (조항 표제어 ∪ 본문어) ∩ check 대표텍스트 핵심어 개수(중복 제거).
+//   titleStrong  = 조항 표제 핵심어 중 check와 겹친 비율 ≥ TITLE_STRONG_RATIO && 겹침 ≥ 1.
+function overlapFeatures(clause, check) {
+  var ck = Sim.keywords(checkText(check));
+  var body = Sim.keywords(String(clause.body || ""));
+  var titleKw = Sim.keywords(ClauseRole.parseTitle(clause.heading || ""));
+  var all = {};
+  var k;
+  for (k in body) all[k] = 1;
+  for (k in titleKw) all[k] = 1;
+  var uniq = 0;
+  for (k in all) if (ck[k]) uniq++;
+  var tTot = 0, tHit = 0;
+  for (k in titleKw) { tTot++; if (ck[k]) tHit++; }
+  var titleStrong = tTot > 0 && tHit >= 1 && (tHit / tTot) >= MatcherConfig.TITLE_STRONG_RATIO;
+  return { uniq: uniq, titleStrong: titleStrong };
+}
+
+// 노출 게이트: 명시 인용 · 복수 핵심어 겹침 · 표제 강일치 중 하나면 통과.
+function passesOverlapGate(clause, check, citation) {
+  if (citation) return true;
+  var f = overlapFeatures(clause, check);
+  return f.uniq >= MatcherConfig.OVERLAP_MIN || f.titleStrong;
+}
+
 // ── 조항×체크 점수 ───────────────────────────────────────────────
 function scoreClauseCheck(clause, checkEntry, model) {
   var cq = clauseQuery(clause);
@@ -880,6 +911,19 @@ function analyze(clauses, docs, activeModules) {
     var tier = decideTier(candidates, cp);
     var coverage = coverageOf(tier, cp);
     var top = scored[0] || null;
+
+    // 노출 게이트: 짚음/확인권장(조항 매칭 tier)에 핵심어 복수 겹침을 요구.
+    // 미달 시 tier는 보존하되 coverage를 quiet로 강등(약한 후보를 조용히 접음).
+    // consider(부재 알람)·none은 조항 매칭이 아니라 게이트 대상 아님.
+    var gate = null;
+    if ((coverage === "addressed" || coverage === "verify") && candidates.length) {
+      var bestClause = candidates[0].clause;
+      var f = overlapFeatures(bestClause, cp);
+      var passed = candidates[0].s.citation === true || f.uniq >= MatcherConfig.OVERLAP_MIN || f.titleStrong;
+      gate = { uniq: f.uniq, titleStrong: f.titleStrong, passed: passed };
+      if (!passed) coverage = "quiet";
+    }
+
     var reasons = _reasons(tier, candidates.length ? candidates : scored, cp);
     var rankedTop = scored.slice(0, 3).map(function (r) {
       return { clauseIndex: r.clause.index, score: r.s.score };
@@ -889,11 +933,12 @@ function analyze(clauses, docs, activeModules) {
       cpId: cp.id,
       tier: tier,
       coverage: coverage,
-      best: top ? { clauseIndex: top.clause.index, score: top.s.score, reasons: reasons } : null,
+      best: top ? { clauseIndex: top.clause.index, score: top.s.score, reasons: reasons, gate: gate } : null,
       ranked: rankedTop
     });
 
-    if (tier !== "none" && top) {
+    // 노출 매칭: 게이트 통과(coverage가 quiet로 강등되지 않은 조항 매칭)만.
+    if ((coverage === "addressed" || coverage === "verify") && top) {
       matches.push({
         cpId: cp.id,
         clauseIndex: top.clause.index,
@@ -926,6 +971,8 @@ if (typeof module !== "undefined")
     citationHit: citationHit,
     citationMatch: citationMatch,
     titleBonus: titleBonus,
+    overlapFeatures: overlapFeatures,
+    passesOverlapGate: passesOverlapGate,
     scoreClauseCheck: scoreClauseCheck,
     decideTier: decideTier,
     alarmGate: alarmGate,

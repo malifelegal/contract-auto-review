@@ -17,6 +17,8 @@ var MatcherConfig = {
   SHORT_LEN: 120,       // 짧은 조항 판정 본문 길이(자)
   NORM_BONUS: 3,        // 규범유형 일치 가산
   TITLE_BONUS_MAX: 5,   // 표제 용어 겹침 가산 상한
+  OVERLAP_MIN: 2,       // 노출(verify/addressed) 자격 최소 고유 핵심어 겹침 — 단일 겹침은 quiet 강등
+  TITLE_STRONG_RATIO: 0.5, // 표제 강일치 예외: 조항 표제 핵심어 중 check와 겹친 비율 하한
   ALARM_SEVERITIES: ["필수", "권장"] // 검토 제안(consider) 알람 게이트 — 참고 부재는 조용(quiet)
 };
 

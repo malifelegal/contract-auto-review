@@ -254,3 +254,7 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 /* 짧은 라벨 우선 표기(#4) */
 .cp-label, .lq-label { display: block; font-weight: 600; font-size: 13px; color: #1a1a2e; }
 .cp-detail-q, .lq-detail { display: block; font-size: 12px; color: #778; margin-top: 3px; line-height: 1.4; }
+
+/* 검수 탭 범위 안내(리뷰: 화법 혼선 방지) */
+.verify-scope-note { background: #eef2f8; border-left: 3px solid #46618c; border-radius: 0 6px 6px 0;
+                     padding: 8px 12px; font-size: 13px; color: #445; margin: 0 0 12px; line-height: 1.5; }

@@ -278,7 +278,8 @@ function analyze(clauses, docs, activeModules) {
     if ((coverage === "addressed" || coverage === "verify") && candidates.length) {
       var bestClause = candidates[0].clause;
       var f = overlapFeatures(bestClause, cp);
-      var passed = candidates[0].s.citation === true || f.uniq >= MatcherConfig.OVERLAP_MIN || f.titleStrong;
+      // 게이트 통과 판정은 passesOverlapGate로 단일화(순수함수·테스트 대상과 동일 로직).
+      var passed = passesOverlapGate(bestClause, cp, candidates[0].s.citation === true);
       gate = { uniq: f.uniq, titleStrong: f.titleStrong, passed: passed };
       if (!passed) coverage = "quiet";
     }

@@ -107,8 +107,7 @@ checks:
     module: M-SEC
     severity: 필수
     severity_basis: 강행규정(효력요건) — 민법 제330조(질권설정은 목적물 인도로 효력 발생, 요물성)
-    norm_type: 선언
-    severity_override: true
+    norm_type: 강행
     basis: statute
     triggers:
       keywords: [동산질권, 질권, 질물, 점유, 인도]
@@ -144,8 +143,7 @@ checks:
     module: M-SEC
     severity: 필수
     severity_basis: 강행규정 — 민법 제357조(근저당은 채무 최고액 확정 필요)
-    norm_type: 선언
-    severity_override: true
+    norm_type: 강행
     basis: statute
     triggers:
       keywords: [저당권, 근저당, 채권최고액, 피담보채권]
@@ -167,8 +165,8 @@ checks:
     check: 저당권 피담보채권 범위(원본·이자·지연배상 1년분 한정)가 반영되어 있는가
     label: "저당 피담보채권 범위"
     module: M-SEC
-    severity: 참고
-    severity_basis: 강행규정이나 계약 임의조정 여지 낮음 — 민법 제360조(지연배상은 1년분 한정)
+    severity: 권장
+    severity_basis: 강행규정(법정 담보범위) — 민법 제360조(지연배상 1년분 한정). 법률상 당연 적용이나 계약 반영 시 오해 방지
     norm_type: 강행
     severity_override: true
     basis: statute
@@ -279,7 +277,7 @@ checks:
         source_type: law
   - id: FIN-ASSET-02
     check: 금지되는 자산운용(투기목적 대출·자기주식 취득 목적 대출·임직원 대출 등)에 해당하지 않는가
-    label: "금지 자산운용 해당"
+    label: "금지 자산운용 비해당"
     module: M-ASSET
     severity: 필수
     severity_basis: 강행규정(금지) — 보험업법 제105조(금지되는 자산운용)

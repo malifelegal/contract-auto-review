@@ -815,7 +815,7 @@ function renderReport() {
     h += '<section class="report-sec-block"><h3>검토의견 개진 항목 (' + opinions.length + ")</h3>";
     h += opinions.map(function (o) {
       return '<div class="opinion-item"><div class="ri-head"><span class="sev sev-' + o.cp.severity + '">' +
-        esc(o.cp.severity) + '</span><span class="ri-q">' + esc(o.cp.check) + "</span></div>" +
+        esc(o.cp.severity) + '</span><span class="ri-q">' + labelQ(o.cp) + "</span></div>" +
         (o.loc ? '<p class="ri-loc">관련 조항: ' + esc(o.loc) + "</p>" : "") +
         (o.comment ? '<p class="oi-comment">의견: ' + esc(o.comment) + "</p>" : "") + "</div>";
     }).join("");

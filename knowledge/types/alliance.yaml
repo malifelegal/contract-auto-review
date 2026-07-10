@@ -45,7 +45,7 @@ checks:
     sources: []
   - id: ALL-CORE-02
     check: 협약(MOU)의 법적 구속력 유무(구속력 있는 조항과 없는 조항)가 명확한가
-    label: "MOU 법적 구속력"
+    label: "MOU 구속력 명확화"
     module: M-CORE
     severity: 참고
     severity_basis: 실무 항목 — MOU는 구속력 배제 특약 가능, 의사 명확화가 분쟁예방 핵심

@@ -44,6 +44,12 @@ checks:
         quote: 집합투자를 수행하기 위한 기구로서 다음 각 호의 것을 말한다
         verified: true
         source_type: law
+      - law: 자본시장과 금융투자업에 관한 법률
+        article: 제9조
+        clause: 제22항
+        quote: 집합투자기구의 조직, 운영 및 투자자의 권리ㆍ의무를 정한 것으로서 투자신탁의 신탁계약, 투자회사의 정관 및 투자합자조합의 조합계약을 말한다
+        verified: true
+        source_type: law
   - id: INV-FUND-02
     check: 사모집합투자기구인 경우 사모 요건(투자자 총수 제한 등)에 부합하는가
     label: "사모 요건 부합"

@@ -4,10 +4,11 @@ meta:
   detect_keywords: [전산, 시스템 개발, 소프트웨어, SI, 정보시스템, 정보처리, 전산용역, 외주, 유지보수, 시스템 구축, 시스템 고도화, 솔루션 도입, 프로그램 개발, 서비스 이용계약, 라이선스, 클라우드, SaaS]
   modules:
     - id: M-ITSEC
-      name: 전산외주 보안·외주인력 통제
-      always_on: true
-      screening_question: null
-      suggest_keywords: []
+      name: 전자금융 정보처리시스템 외주(전금감규 §60)
+      always_on: false
+      activation: strong
+      screening_question: 전자금융거래를 위한 정보처리시스템의 개발·운영·유지관리 외주인가?
+      suggest_keywords: [전자금융, 전자금융거래, 정보처리시스템, 금융거래정보, 전산실, 전자금융보조업자, 금융거래]
     - id: M-DELIV
       name: 산출물·지식재산권·검수·하자
       always_on: true
@@ -27,6 +28,7 @@ checks:
   # ── M-ITSEC: 전자금융감독규정 제60조(외부주문등에 대한 기준) ──
   - id: ITSEC-01
     module: M-ITSEC
+    tier: conditional
     check: 외부주문 개발업무에 사용되는 업무장소·전산설비를 내부 업무용과 분리하여 설치·운영하는 조항이 있는가
     label: "업무장소·전산설비 분리"
     severity: 필수
@@ -44,6 +46,7 @@ checks:
         verified: true
   - id: ITSEC-02
     module: M-ITSEC
+    tier: conditional
     check: 금융회사와 이용자 간 암호화정보 해독 및 원장 등 중요 데이터 변경을 금지하는 조항이 있는가
     label: "암호해독·원장변경 금지"
     severity: 필수
@@ -61,6 +64,7 @@ checks:
         verified: true
   - id: ITSEC-03
     module: M-ITSEC
+    tier: conditional
     check: 계좌번호·비밀번호 등 이용자 금융정보의 무단보관·유출 금지 조항이 있는가
     label: "금융정보 무단보관·유출 금지"
     severity: 필수
@@ -78,6 +82,7 @@ checks:
         verified: true
   - id: ITSEC-04
     module: M-ITSEC
+    tier: conditional
     check: 접근매체 위·변조, 해킹, 개인정보유출 등에 대비한 보안대책 수립 조항이 있는가
     label: "접근매체·해킹 보안대책"
     severity: 필수
@@ -95,6 +100,7 @@ checks:
         verified: true
   - id: ITSEC-05
     module: M-ITSEC
+    tier: conditional
     check: 금융회사와 전자금융보조업자 간 접속에 전용회선(동등 보안수준의 가상 전용회선 포함)을 사용하는 조항이 있는가
     label: "전용회선 사용"
     severity: 필수
@@ -112,6 +118,7 @@ checks:
         verified: true
   - id: ITSEC-06
     module: M-ITSEC
+    tier: conditional
     check: 정보처리시스템 장애 등 서비스 중단에 대비한 비상대책 수립 조항이 있는가
     label: "서비스중단 비상대책"
     severity: 필수
@@ -129,6 +136,7 @@ checks:
         verified: true
   - id: ITSEC-07
     module: M-ITSEC
+    tier: conditional
     check: 외부주문의 입찰·계약·수행·완료 등 각 단계별 보안관리방안(금융감독원장이 정하는 방안)을 따르도록 하는 조항이 있는가
     label: "단계별 보안관리방안"
     severity: 필수
@@ -146,6 +154,7 @@ checks:
         verified: true
   - id: ITSEC-08
     module: M-ITSEC
+    tier: conditional
     check: 중요 전산자료의 백업자료 보존·백업설비 확보 등 백업대책 수립 조항이 있는가
     label: "백업대책 수립"
     severity: 필수
@@ -163,6 +172,7 @@ checks:
         verified: true
   - id: ITSEC-09
     module: M-ITSEC
+    tier: conditional
     check: 수탁자(전자금융보조업자)의 재무건전성 연 1회 이상 평가·상시 모니터링에 필요한 자료 제공 협조 조항이 있는가
     label: "수탁자 재무건전성 평가"
     severity: 필수
@@ -180,6 +190,7 @@ checks:
         verified: true
   - id: ITSEC-10
     module: M-ITSEC
+    tier: conditional
     check: 수탁자가 제공하는 서비스의 품질수준 연 1회 이상 평가에 협조하는 조항이 있는가
     label: "서비스 품질수준 평가"
     severity: 필수
@@ -197,6 +208,7 @@ checks:
         verified: true
   - id: ITSEC-11
     module: M-ITSEC
+    tier: conditional
     check: 수탁자가 사전 동의 없이 재외부주문 계약 체결·계약업체 변경을 하지 못하도록 통제하는 조항이 있는가
     label: "재외부주문 사전통제"
     severity: 필수
@@ -214,6 +226,7 @@ checks:
         verified: true
   - id: ITSEC-12
     module: M-ITSEC
+    tier: conditional
     check: 업무수행인력의 사전 신원조회(또는 신원보증) 및 인력변경 시 인수인계 등 외주인력 관리방안 조항이 있는가
     label: "외주인력 관리방안"
     severity: 필수
@@ -231,6 +244,7 @@ checks:
         verified: true
   - id: ITSEC-13
     module: M-ITSEC
+    tier: conditional
     check: 외부주문에 대한 자체 보안성검토와 정기 보안점검 실시(수탁자 협조) 조항이 있는가
     label: "보안성검토·정기점검"
     severity: 필수
@@ -248,6 +262,7 @@ checks:
         verified: true
   - id: ITSEC-14
     module: M-ITSEC
+    tier: conditional
     check: 재위탁 구조라면 재수탁업자의 금융거래정보 변경이 위탁회사·원수탁업자의 개별 지시에 따르도록 하는 조항이 있는가
     label: "재수탁자 정보변경 지시"
     severity: 필수
@@ -265,6 +280,7 @@ checks:
         verified: true
   - id: ITSEC-15
     module: M-ITSEC
+    tier: conditional
     check: 재위탁 구조라면 이용자 금융거래정보를 위탁회사 전산실 내에 두도록 하는 조항이 있는가
     label: "금융정보 전산실내 보관"
     severity: 필수

@@ -924,17 +924,39 @@ function renderReport() {
   left += "</div>";
 
   // ── 우: 종합 서술형 리포트 ─────────────────────────────────
+  // 필수 consider를 tier로 분리: core=계약 본질(우선 확인) / conditional=특수규제(적용 시)
+  var mustCore = mustConsider.filter(function (it) { return it.cp.tier !== "conditional"; });
+  var mustCond = mustConsider.filter(function (it) { return it.cp.tier === "conditional"; });
+
+  // 결론(#1): 검토자가 직접 쓴 검토의견 위주로. 없으면 매칭 요약으로 폴백.
+  var opinionCount = 0, okCount = 0, naCount = 0;
+  r.results.forEach(function (res) {
+    var v = verdictStore[res.cpId];
+    if (!v || !v.verdict) return;
+    if (v.verdict === "검토의견") opinionCount++;
+    else if (v.verdict === "이상없음") okCount++;
+    else if (v.verdict === "해당없음") naCount++;
+  });
   var conclCls, conclText;
-  if (mustConsider.length) {
+  if (opinionCount || okCount || naCount) {
+    // 사람이 검토의견을 남긴 경우 — 그 내용 위주 서술.
+    conclCls = opinionCount ? "concl-caution" : "concl-ok";
+    var parts = [];
+    if (okCount) parts.push(okCount + "개 항목을 확인함(이상없음)");
+    if (opinionCount) parts.push(opinionCount + "개 항목에 검토의견을 개진함");
+    if (naCount) parts.push(naCount + "개 항목은 해당 없음");
+    conclText = parts.join(", ") + ".";
+    if (mustCore.length) conclText += " 필수 " + mustCore.length + "개는 계약서에서 아직 확인되지 않아 보완 필요.";
+  } else if (mustCore.length) {
     conclCls = "concl-alert";
-    conclText = "필수 검토항목 " + mustConsider.length + "건이 계약서에서 확인되지 않음 — 우선 확인 필요.";
-  } else if (recConsider.length || verify.length) {
+    conclText = "아직 검토의견 미기입. 계약 본질상 필요한 필수 항목 " + mustCore.length + "개가 계약서에서 확인되지 않음 — 우선 확인 필요.";
+  } else if (recConsider.length || verify.length || mustCond.length) {
     conclCls = "concl-caution";
-    conclText = "계약서 전체적으로 필수 항목은 관련 조항에 닿음. 다만 권장 검토제안 " +
-      recConsider.length + "건 · 문구 확인 권장 " + verify.length + "건을 살펴볼 것.";
+    conclText = "아직 검토의견 미기입. 필수(본질) 항목은 관련 조항에 닿음. 확인 권장 " + verify.length +
+      "건" + (mustCond.length ? " · 특수규제 확인 " + mustCond.length + "건(적용 시)" : "") + "을 살펴볼 것.";
   } else {
     conclCls = "concl-ok";
-    conclText = "계약서 전체적으로 특이사항 없음 — 필수·권장 검토항목이 모두 관련 조항에 닿음." +
+    conclText = "계약서 전체적으로 특이사항 없음 — 필수·권장 항목이 모두 관련 조항에 닿음." +
       (mustCovered.length ? " (필수 " + mustCovered.length + "건은 부속 서류에서 커버됨)" : "");
   }
 
@@ -971,15 +993,23 @@ function renderReport() {
     }).join("") + "</section>";
   }
 
-  // 보완 필요(필수 검토제안) — "다만 이 부분은 보완 필요"
-  if (mustConsider.length) {
-    right += '<section class="report-sec-block"><h4 class="h4-alert">보완 필요 — 필수 항목 미확인 (' + mustConsider.length + ")</h4>";
-    right += '<p class="sec-hint">계약서에서 매칭 조항을 못 찾음. 부속 서류에 있거나 빠졌을 수 있음 — 확인 요.</p>';
-    right += mustConsider.map(function (it) {
-      return '<div class="report-item consider-item"><div class="ri-head"><span class="sev sev-필수">필수</span>' +
-        '<span class="ri-q">' + labelQ(it.cp) + "</span></div>" +
-        (it.cp.severity_basis ? '<p class="ri-why">' + esc(it.cp.severity_basis) + "</p>" : "") + "</div>";
-    }).join("") + "</section>";
+  function _mustItem(it) {
+    return '<div class="report-item consider-item"><div class="ri-head"><span class="sev sev-필수">필수</span>' +
+      '<span class="ri-q">' + labelQ(it.cp) + "</span></div>" +
+      (it.cp.severity_basis ? '<p class="ri-why">' + esc(it.cp.severity_basis) + "</p>" : "") + "</div>";
+  }
+  // 보완 필요(core) — 계약 본질상 필요한 필수인데 계약서에서 미확인.
+  if (mustCore.length) {
+    right += '<section class="report-sec-block"><h4 class="h4-alert">보완 필요 — 필수 항목 미확인 (' + mustCore.length + ")</h4>";
+    right += '<p class="sec-hint">이 유형 계약에 통상 필요한 필수 항목인데 계약서에서 매칭 조항을 못 찾음 — 확인 요.</p>';
+    right += mustCore.map(_mustItem).join("") + "</section>";
+  }
+  // 특수 규제(conditional) — 전자금융감독규정 §60 등, 적용되는 경우에만 확인. 접힘.
+  if (mustCond.length) {
+    right += '<details class="report-sec"><summary>특수 규제 확인 (적용 시) ' + mustCond.length +
+      "건 — 전자금융거래 관련 시스템 외주 등에만 해당</summary>";
+    right += '<p class="sec-hint">이 계약이 해당 규제 대상(예: 전자금융거래 정보처리시스템 외주)일 때만 필수. 아니면 무시.</p>';
+    right += mustCond.map(_mustItem).join("") + "</details>";
   }
 
   // 부속서류에서 커버됨(#3) — 필수 미확인이었으나 부속 서류에서 다뤄진 항목.

@@ -14,10 +14,11 @@ meta:
       screening_question: 위탁 업무에 개인(신용)정보 처리가 포함되는가?
       suggest_keywords: [개인정보, 신용정보, 정보주체, 고객정보]
     - id: M-IT
-      name: IT·전산 외주
+      name: 전자금융 정보처리시스템 외주(전금감규 §60)
       always_on: false
-      screening_question: 전산시스템·프로그램의 개발·운영·유지보수가 포함되는가?
-      suggest_keywords: [전산, 시스템 개발, 유지보수, 소프트웨어, 서버]
+      activation: strong
+      screening_question: 전자금융거래를 위한 정보처리시스템의 개발·운영·유지관리 외주인가?
+      suggest_keywords: [전자금융, 전자금융거래, 정보처리시스템, 금융거래정보, 전산실, 전자금융보조업자, 금융거래]
     - id: M-CLOUD
       name: 클라우드·국외 위탁
       always_on: false
@@ -691,6 +692,7 @@ checks:
   # ── M-IT: 전자금융감독규정 제60조 ──
   - id: IT-01
     module: M-IT
+    tier: conditional
     check: 외부주문에 의한 개발 업무장소·전산설비를 내부 업무용과 분리하여 설치·운영하는 조항이 있는가
     label: "개발 설비 분리 운영"
     severity: 필수
@@ -708,6 +710,7 @@ checks:
         verified: true
   - id: IT-02
     module: M-IT
+    tier: conditional
     check: 계좌번호·비밀번호 등 이용자 금융정보의 무단보관·유출 금지 조항이 있는가
     label: "금융정보 무단보관 금지"
     severity: 필수
@@ -725,6 +728,7 @@ checks:
         verified: true
   - id: IT-03
     module: M-IT
+    tier: conditional
     check: 접근매체 위·변조, 해킹, 개인정보유출 등에 대비한 보안대책 수립 조항이 있는가
     label: "위·변조·해킹 보안대책"
     severity: 필수
@@ -742,6 +746,7 @@ checks:
         verified: true
   - id: IT-04
     module: M-IT
+    tier: conditional
     check: 금융회사와 전자금융보조업자 간 접속에 전용회선(동등 보안수준의 가상 전용회선 포함)을 사용하는 조항이 있는가
     label: "전용회선 사용"
     severity: 필수
@@ -759,6 +764,7 @@ checks:
         verified: true
   - id: IT-05
     module: M-IT
+    tier: conditional
     check: 정보처리시스템 장애 등 서비스 중단에 대비한 비상대책 수립 조항이 있는가
     label: "시스템 장애 비상대책"
     severity: 필수
@@ -776,6 +782,7 @@ checks:
         verified: true
   - id: IT-06
     module: M-IT
+    tier: conditional
     check: 중요 전산자료의 백업자료 보존·백업설비 확보 등 백업대책 수립 조항이 있는가
     label: "전산자료 백업대책"
     severity: 필수
@@ -793,6 +800,7 @@ checks:
         verified: true
   - id: IT-07
     module: M-IT
+    tier: conditional
     check: 수탁자(전자금융보조업자)의 재무건전성 연 1회 이상 평가·상시 모니터링에 필요한 자료 제공 협조 조항이 있는가
     label: "수탁자 재무건전성 평가"
     severity: 필수
@@ -810,6 +818,7 @@ checks:
         verified: true
   - id: IT-08
     module: M-IT
+    tier: conditional
     check: 수탁자가 제공하는 서비스의 품질수준 연 1회 이상 평가에 협조하는 조항이 있는가
     label: "서비스 품질수준 평가"
     severity: 필수
@@ -827,6 +836,7 @@ checks:
         verified: true
   - id: IT-09
     module: M-IT
+    tier: conditional
     check: 수탁자가 사전 동의 없이 재외부주문 계약 체결·계약업체 변경을 하지 못하도록 통제하는 조항이 있는가
     label: "재외부주문 사전동의 통제"
     severity: 필수
@@ -844,6 +854,7 @@ checks:
         verified: true
   - id: IT-10
     module: M-IT
+    tier: conditional
     check: 업무수행인력의 사전 신원조회(또는 신원보증) 및 인력변경 시 인수인계 등 인력 관리방안 조항이 있는가
     label: "업무인력 신원·관리방안"
     severity: 필수
@@ -861,6 +872,7 @@ checks:
         verified: true
   - id: IT-11
     module: M-IT
+    tier: conditional
     check: 외부주문에 대한 자체 보안성검토와 정기 보안점검 실시(수탁자 협조) 조항이 있는가
     label: "보안성검토·정기점검"
     severity: 필수
@@ -878,6 +890,7 @@ checks:
         verified: true
   - id: IT-12
     module: M-IT
+    tier: conditional
     check: 재위탁 구조라면 재수탁업자의 금융거래정보 변경이 위탁회사·원수탁업자의 개별 지시에 따르도록 하는 조항이 있는가
     label: "재수탁 정보변경 지시통제"
     severity: 필수
@@ -895,6 +908,7 @@ checks:
         verified: true
   - id: IT-13
     module: M-IT
+    tier: conditional
     check: 재위탁 구조라면 이용자 금융거래정보를 위탁회사 전산실 내에 두도록 하는 조항이 있는가
     label: "금융정보 전산실 내 보관"
     severity: 필수

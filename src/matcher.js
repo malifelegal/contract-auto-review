@@ -25,11 +25,18 @@ function detectType(text, types) {
     .sort(function (a, b) { return b.score - a.score; });
 }
 
+// 본문 키워드로 모듈 활성 제안. activation:"strong" 모듈은 특수 규제(전금감규 §60 등)라
+// 키워드 1개로는 부족 — 서로 다른 키워드 2개+ 겹칠 때만 활성(일반 계약 오탐 억제).
 function suggestModules(text, modules) {
+  var t = String(text || "");
   return modules
     .filter(function (m) { return !m.always_on; })
     .filter(function (m) {
-      return (m.suggest_keywords || []).some(function (kw) { return text.indexOf(kw) !== -1; });
+      var kws = m.suggest_keywords || [];
+      var hits = 0;
+      for (var i = 0; i < kws.length; i++) if (t.indexOf(kws[i]) !== -1) hits++;
+      var need = m.activation === "strong" ? 2 : 1;
+      return hits >= need;
     })
     .map(function (m) { return m.id; });
 }

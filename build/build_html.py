@@ -10,7 +10,12 @@ from validate import load_knowledge
 
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / "src"
-JS_ORDER = ["sim.js", "clause_role.js", "matcher_config.js", "segmenter.js", "matcher.js", "docx.js", "verify.js", "verdict.js", "tags.js", "app.js"]
+# pf.js는 추출기(cfb·extract-*)보다 먼저. cfb는 doc·hwp보다 먼저.
+JS_ORDER = [
+    "sim.js", "clause_role.js", "matcher_config.js", "segmenter.js", "matcher.js",
+    "pf.js", "cfb.js", "extract-pdf.js", "extract-doc.js", "extract-hwp.js", "extract-zip.js", "extract.js",
+    "verify.js", "verdict.js", "tags.js", "app.js",
+]
 
 
 def build(knowledge_dir, out_path, law_dbs=None, news_db=None):
@@ -27,9 +32,19 @@ def build(knowledge_dir, out_path, law_dbs=None, news_db=None):
     # </script> 조기 종료 방지: JSON 문자열 내 </ 를 <\/ 로 (JSON 유효 이스케이프)
     data_json = json.dumps(payload, ensure_ascii=False).replace("</", "<\\/")
 
+    vendor_js = (
+        (ROOT / "vendor" / "jszip.min.js").read_text()
+        + "\n"
+        + (ROOT / "vendor" / "pdf.min.js").read_text()
+    )
+    # pdf.worker.min.js는 <script type="text/plain">에 인라인 → blob 워커 소스로 사용.
+    # </script 조기 종료 방지(text/plain이라 이스케이프 필요).
+    worker_src = (ROOT / "vendor" / "pdf.worker.min.js").read_text().replace("</script", "<\\/script")
+
     html = (SRC / "template.html").read_text()
     html = html.replace("/*__STYLE__*/", (SRC / "style.css").read_text())
-    html = html.replace("/*__VENDOR_JS__*/", (ROOT / "vendor" / "jszip.min.js").read_text())
+    html = html.replace("/*__VENDOR_JS__*/", vendor_js)
+    html = html.replace("/*__PDF_WORKER_SRC__*/", worker_src)
     html = html.replace("/*__APP_JS__*/", "\n".join((SRC / f).read_text() for f in JS_ORDER))
     html = html.replace("__DATA_JSON__", data_json)
 

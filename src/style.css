@@ -258,3 +258,8 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 /* 검수 탭 범위 안내(리뷰: 화법 혼선 방지) */
 .verify-scope-note { background: #eef2f8; border-left: 3px solid #46618c; border-radius: 0 6px 6px 0;
                      padding: 8px 12px; font-size: 13px; color: #445; margin: 0 0 12px; line-height: 1.5; }
+
+/* 리포트 검토의견 내보내기 */
+.report-actions { margin-top: 20px; padding-top: 14px; border-top: 1px solid #e8eaf2;
+                  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.report-actions-note { font-size: 12px; color: #778; }

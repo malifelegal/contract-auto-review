@@ -25,7 +25,7 @@
       <div id="analyze-input">
         <textarea id="contract-text" placeholder="계약서 텍스트를 붙여넣으세요"></textarea>
         <div class="input-actions">
-          <label class="filebtn">.docx 열기<input id="docx-file" type="file" accept=".docx" hidden></label>
+          <label class="filebtn">파일 열기<input id="docx-file" type="file" accept=".docx,.pdf,.doc,.hwp,.hwpx" hidden></label>
           <button id="btn-analyze" class="primary">분석 시작</button>
         </div>
         <p id="input-error" class="error" hidden></p>
@@ -130,6 +130,7 @@
 
 <script id="cr-data" type="application/json">__DATA_JSON__</script>
 <script>/*__VENDOR_JS__*/</script>
+<script type="text/plain" id="pdfjs-worker-src">/*__PDF_WORKER_SRC__*/</script>
 <script>/*__APP_JS__*/</script>
 </body>
 </html>

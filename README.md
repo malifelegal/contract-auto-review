@@ -30,7 +30,15 @@ dist/contract-review.html  (단일 파일, 외부 의존 0)
 런타임 JS 모듈(브라우저 인라인, 외부 의존 0):
 `sim.js`(유사도 char_wb TF-IDF·Jaccard) → `clause_role.js`(조항역할·규범유형) →
 `matcher_config.js`(임계값) → `segmenter.js`(조항 분할) → `matcher.js`(점수·tier) →
-`docx.js`(.docx 파싱) → `app.js`(UI). 이 순서로 인라인된다.
+`pf.js`·`cfb.js`·`extract-*.js`(파일 추출: PDF·DOC·HWP·HWPX·DOCX) →
+`verify.js`·`verdict.js`·`tags.js` → `app.js`(UI). 이 순서로 인라인된다.
+
+## 계약서 입력 — 붙여넣기 또는 파일
+
+계약서 텍스트를 붙여넣거나 **파일 열기**로 불러온다. 지원 형식(전부 브라우저에서 파싱, 외부 요청 0):
+`.docx`·`.hwpx`(zip+XML) · `.pdf`(pdf.js, 텍스트층 있는 PDF) · `.doc`(Word 97-2003, CFB) · `.hwp`(한글 5.0, CFB+deflate).
+스캔 PDF·암호 문서·구형(3.0) hwp는 자동 추출 불가 — 텍스트를 복사해 붙여넣는다.
+추출기·벤더(pdf.js·JSZip)는 [legal-review-finder](../legal-review-finder)의 검증된 코드를 이식했다.
 
 ## 개발 환경
 

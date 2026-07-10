@@ -329,13 +329,17 @@ document.getElementById("filter-search").addEventListener("input", renderCheckli
 document.getElementById("docx-file").addEventListener("change", function (e) {
   var f = e.target.files[0];
   if (!f) return;
-  f.arrayBuffer().then(extractDocxText).then(function (text) {
+  var err = document.getElementById("input-error");
+  err.hidden = true;
+  err.textContent = "파일에서 텍스트 추출 중…";
+  err.hidden = false;
+  extractFileText(f).then(function (text) {
     document.getElementById("contract-text").value = text;
-    document.getElementById("input-error").hidden = true;
-  }).catch(function (err) {
-    var el = document.getElementById("input-error");
-    el.textContent = ".docx 파싱 실패(" + err.message + ") — Word에서 텍스트로 복사해 붙여넣으세요.";
-    el.hidden = false;
+    err.hidden = true;
+  }).catch(function (ex) {
+    err.textContent = "파일 파싱 실패(" + ex.message + ") — 원본에서 텍스트를 복사해 붙여넣으세요. " +
+      "(스캔 PDF·암호 문서·구형 hwp는 자동 추출이 안 됩니다)";
+    err.hidden = false;
   });
 });
 
@@ -862,6 +866,10 @@ function renderReport() {
   // 5) 조항별 검토 현황(선택)
   h += _clauseSummarySection(addressed, verify);
 
+  // 리포트에서도 검토의견 내보내기(리뷰: 최종 산출 탭에서 되돌이 방지)
+  h += '<div class="report-actions"><button id="report-verdict-export" class="ghost">검토의견 내보내기</button>' +
+    '<span class="report-actions-note">조항별 보기에서 남긴 판정(이상없음·검토의견·해당없음)을 JSON으로 저장</span></div>';
+
   var body = document.getElementById("report-body");
   body.innerHTML = h;
   body.querySelectorAll("input[type=checkbox]").forEach(function (cb) {
@@ -870,6 +878,8 @@ function renderReport() {
       localStorage.setItem(key, JSON.stringify(saved));
     });
   });
+  var rexp = document.getElementById("report-verdict-export");
+  if (rexp) rexp.addEventListener("click", exportVerdicts);
 }
 // 인쇄 시 접힌 섹션도 펼쳐 요약 타일·검토 제안·확인 권장이 모두 나오게.
 window.addEventListener("beforeprint", function () {

@@ -541,11 +541,62 @@ var LOOP_KEY = "cr-loop-corpus";
 var loopCorpus = Loop.emptyCorpus();
 try { loopCorpus = JSON.parse(localStorage.getItem(LOOP_KEY)) || Loop.emptyCorpus(); } catch (e) {}
 function saveCorpus() { localStorage.setItem(LOOP_KEY, JSON.stringify(loopCorpus)); }
+
+/* ── 팀 운영(P4) — 교환 단위는 판정파일(verdict JSON), 코퍼스는 로컬 집계 뷰 ──
+   코퍼스끼리 병합하면 같은 계약이 이중 카운트되므로 코퍼스는 교환하지 않음.
+   판정파일은 contract_hash로 멱등 병합(mergeIntoCorpus) — 공유폴더에 쌓고 일괄 반영.
+   검토자 이름은 코멘트 귀속(loop 추천의 reviewers 표시)에 쓰임. */
+var REVIEWER_KEY = "cr-reviewer";
+function getReviewer() {
+  try { return localStorage.getItem(REVIEWER_KEY) || ""; } catch (e) { return ""; }
+}
+function setReviewer(name) {
+  try { localStorage.setItem(REVIEWER_KEY, String(name || "").trim()); } catch (e) {}
+}
 // 현재 계약서의 검토의견을 코퍼스에 적재(닫힌 루프의 ③단계).
 function ingestCurrentToCorpus() {
-  var meta = { type_id: state.typeId, date: verdictToday(), contract_hash: verdictHash };
+  var meta = { type_id: state.typeId, date: verdictToday(), contract_hash: verdictHash, reviewer: getReviewer() };
   loopCorpus = Loop.mergeIntoCorpus(loopCorpus, Verdict.exportVerdicts(verdictStore, meta));
   saveCorpus();
+}
+// 판정파일(단수·복수) 일괄 반영 — 팀원들의 verdict JSON을 코퍼스에 병합. 멱등(같은 계약 재반영 무시).
+function importVerdictFilesToCorpus(files, done) {
+  var list = Array.prototype.slice.call(files || []);
+  var okN = 0, failN = 0, pending = list.length;
+  if (!pending) { done(0, 0); return; }
+  list.forEach(function (f) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      try {
+        var obj = JSON.parse(reader.result);
+        if (obj && obj.verdicts) { loopCorpus = Loop.mergeIntoCorpus(loopCorpus, obj); okN++; }
+        else failN++;
+      } catch (e) { failN++; }
+      if (--pending === 0) { saveCorpus(); done(okN, failN); }
+    };
+    reader.onerror = function () { failN++; if (--pending === 0) { saveCorpus(); done(okN, failN); } };
+    reader.readAsText(f);
+  });
+}
+// 코퍼스 백업 내보내기 — 브라우저 이동·유실 대비(교환용 아님: 병합 불가, 복원=통째 교체).
+function exportCorpusBackup() {
+  var blob = new Blob([JSON.stringify(loopCorpus, null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url; a.download = "contract-review-corpus-backup.json";
+  a.click(); URL.revokeObjectURL(url);
+}
+// 코퍼스 백업 복원 — 형태 검증 후 통째 교체.
+function restoreCorpusBackup(file, done) {
+  var reader = new FileReader();
+  reader.onload = function () {
+    try {
+      var obj = JSON.parse(reader.result);
+      if (obj && obj.meta && obj.byCheck) { loopCorpus = obj; saveCorpus(); done(true); return; }
+    } catch (e) {}
+    done(false);
+  };
+  reader.readAsText(file);
 }
 
 /* ---------- 조항별 검토의견(verdict) — 계약서 건별 판정 축 ----------
@@ -665,11 +716,15 @@ function bindVerdictControls(root, reRender) {
 
 // 검토의견 내보내기/불러오기 (계약서 건별 JSON)
 function exportVerdicts() {
-  var meta = { type_id: state.typeId, date: verdictToday(), contract_hash: verdictHash };
+  var meta = { type_id: state.typeId, date: verdictToday(), contract_hash: verdictHash, reviewer: getReviewer() };
   var blob = new Blob([JSON.stringify(Verdict.exportVerdicts(verdictStore, meta), null, 2)], { type: "application/json" });
   var url = URL.createObjectURL(blob);
   var a = document.createElement("a");
-  a.href = url; a.download = "contract-review-verdicts.json";
+  // 공유폴더 취합 시 충돌 방지 — 계약해시·검토자·날짜로 유니크 파일명.
+  var rv = getReviewer();
+  a.href = url;
+  a.download = "verdicts_" + (state.typeId || "common") + "_" + verdictHash +
+    (rv ? "_" + rv : "") + "_" + verdictToday() + ".json";
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
@@ -1098,14 +1153,23 @@ function renderReport() {
   right += "</details>";
 
   right += '<div class="report-actions">' +
+    '<label class="reviewer-label">검토자 <input id="reviewer-name" placeholder="이름(코멘트 귀속)" value="' + esc(getReviewer()) + '"></label>' +
     '<button id="report-verdict-export" class="ghost">검토의견 내보내기</button>' +
     '<button id="report-loop-ingest" class="ghost">이 검토를 지식에 반영</button>' +
     '<span class="report-actions-note">누적 판정(코퍼스 ' + loopCorpus.meta.contract_count + '건)에 이 계약서 검토의견을 추가 — 다음 검토에 분포·추천으로 활용</span></div>';
+  // 팀 취합(P4): 판정파일이 교환 단위(멱등 병합) — 공유폴더의 팀원 판정파일을 일괄 반영.
+  right += '<div class="report-actions team-actions">' +
+    '<label class="ghost file-btn">판정파일 일괄 반영<input id="corpus-verdict-files" type="file" accept=".json" multiple hidden></label>' +
+    '<button id="corpus-backup" class="ghost">코퍼스 백업</button>' +
+    '<label class="ghost file-btn">코퍼스 복원<input id="corpus-restore" type="file" accept=".json" hidden></label>' +
+    '<span id="team-actions-msg" class="report-actions-note">팀원들의 검토의견 JSON을 코퍼스에 병합 — 같은 계약 재반영은 무시됨(멱등)</span></div>';
   right += curationPanelHtml();
   right += "</div>";
 
   var body = document.getElementById("report-body");
   body.innerHTML = '<div class="report-split">' + left + right + "</div>";
+  var rvIn = document.getElementById("reviewer-name");
+  if (rvIn) rvIn.addEventListener("change", function () { setReviewer(rvIn.value); });
   var rexp = document.getElementById("report-verdict-export");
   if (rexp) rexp.addEventListener("click", exportVerdicts);
   var ring = document.getElementById("report-loop-ingest");
@@ -1113,6 +1177,26 @@ function renderReport() {
     ingestCurrentToCorpus();
     renderReport();      // 코퍼스 카운트·분포 갱신 반영
     renderClauses();     // 조항별 보기 추천도 갱신
+  });
+  var vfiles = document.getElementById("corpus-verdict-files");
+  if (vfiles) vfiles.addEventListener("change", function () {
+    importVerdictFilesToCorpus(vfiles.files, function (okN, failN) {
+      renderReport(); renderClauses(); // 먼저 다시 그린 뒤 메시지 기입(renderReport가 DOM을 교체하므로)
+      var msg = document.getElementById("team-actions-msg");
+      if (msg) msg.textContent = "반영 완료: " + okN + "건 병합" + (failN ? ", 실패 " + failN + "건(형식 오류)" : "") +
+        " — 코퍼스 " + loopCorpus.meta.contract_count + "건";
+    });
+  });
+  var cbk = document.getElementById("corpus-backup");
+  if (cbk) cbk.addEventListener("click", exportCorpusBackup);
+  var crs = document.getElementById("corpus-restore");
+  if (crs) crs.addEventListener("change", function () {
+    if (!crs.files.length) return;
+    restoreCorpusBackup(crs.files[0], function (ok) {
+      if (ok) { renderReport(); renderClauses(); }
+      var msg = document.getElementById("team-actions-msg");
+      if (msg) msg.textContent = ok ? "코퍼스 복원 완료 — " + loopCorpus.meta.contract_count + "건" : "복원 실패: 코퍼스 백업 파일이 아님";
+    });
   });
 }
 // 검토의견 한 줄 — 판정 배지 + 코멘트.

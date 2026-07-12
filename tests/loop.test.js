@@ -42,6 +42,17 @@ test("mergeIntoCorpus: 코멘트 없는 판정은 코멘트 이력에 안 남음
   assert.strictEqual(c.byCheck["CORE-07"].comments.length, 0);
 });
 
+test("mergeIntoCorpus: 동일 코멘트의 검토자 귀속이 누적된다(P4 팀 취합)", () => {
+  let c = L.emptyCorpus();
+  c = L.mergeIntoCorpus(c, exp("h1", "손", { "CMN-11": { verdict: "검토의견", comment: "상한 확인 필요", date: "d" } }));
+  c = L.mergeIntoCorpus(c, exp("h2", "김", { "CMN-11": { verdict: "검토의견", comment: "상한 확인 필요", date: "d" } }));
+  const same = c.byCheck["CMN-11"].comments.find((x) => x.text === "상한 확인 필요");
+  assert.deepStrictEqual(same.reviewers, ["손", "김"]); // 서로 다른 검토자 누적
+  // 같은 검토자의 다른 계약 재출현은 중복 등재 안 됨
+  c = L.mergeIntoCorpus(c, exp("h3", "손", { "CMN-11": { verdict: "검토의견", comment: "상한 확인 필요", date: "d" } }));
+  assert.deepStrictEqual(c.byCheck["CMN-11"].comments.find((x) => x.text === "상한 확인 필요").reviewers, ["손", "김"]);
+});
+
 test("mergeIntoCorpus: 같은 계약서(hash) 재적재는 중복 카운트 안 함", () => {
   let c = L.emptyCorpus();
   const e = exp("h1", "손", { "CORE-07": { verdict: "이상없음", comment: "", date: "d" } });

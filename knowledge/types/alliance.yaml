@@ -12,7 +12,8 @@ meta:
       name: 개인정보 제공·공동이용
       always_on: false
       screening_question: 제휴 과정에서 고객(개인)정보를 상대방에 제공·공유하는가?
-      suggest_keywords: [개인정보, 고객정보, 정보제공, 마케팅, 고객]
+      # 범용어 제거: '고객'·'마케팅'은 어느 제휴계약에나 등장 → M-PII 오활성. PII 고유어(개인정보·고객정보·정보제공)만 유지.
+      suggest_keywords: [개인정보, 고객정보, 정보제공]
     - id: M-COMP
       name: 공정거래(경쟁제한·거래상지위)
       always_on: false

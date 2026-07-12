@@ -118,6 +118,8 @@ checks:
     triggers:
       keywords: [자격, 인허가, 등록, 법규 준수]
     absence_check: true
+    # 조건부 부재체크: 손해사정 위탁 어휘가 본문에 있을 때만 부재알람(콜센터·IT·일반사무 위탁에서 손해사정 평가기준 누락 오탐 방지).
+    absence_precondition: [손해사정, 사정업무, 손해사정사, 손해사정업자, 보험금 산정]
     sources:
       - law: 금융기관의 업무위탁 등에 관한 규정
         article: 제3조(업무위탁 등)

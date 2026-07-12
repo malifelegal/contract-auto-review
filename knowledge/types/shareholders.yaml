@@ -47,6 +47,8 @@ checks:
     triggers:
       keywords: [양도제한, 양도의 제한, 이사회의 승인, 정관]
     absence_check: true
+    # 조건부 부재체크: 양도 관련 어휘가 본문에 있을 때만 부재알람(순수 거버넌스·의결권 주주간계약에서 양도제한 조항 부재 오탐 방지).
+    absence_precondition: [양도, 양도제한, 처분, 매각]
     sources:
       - law: 상법
         article: 제335조
@@ -154,6 +156,8 @@ checks:
     triggers:
       keywords: [주권 교부, 명의개서, 주주명부, 양도방법]
     absence_check: true
+    # 조건부 부재체크: 주식양도 이행이 예정된 계약(양도·양수도 어휘)에서만 부재알람(순수 거버넌스 주주간계약 오탐 방지).
+    absence_precondition: [양도, 양수도, 주식양도, 지분양도, 매각, 매매]
     sources:
       - law: 상법
         article: 제336조
@@ -228,6 +232,8 @@ checks:
     triggers:
       keywords: [정보접근, 열람, 회계장부, 자료 제공, 정보 제공]
     absence_check: true
+    # 조건부 부재체크: 정보접근·열람 특이 어휘가 본문에 있을 때만 부재알람(순수 지분처분형 주주간계약 오탐 방지). '정보'·'자료' 단독은 범용어라 게이트 불가 — 복합어만 사용.
+    absence_precondition: [정보접근, 열람, 회계장부, 자료 제공, 정보 제공]
     sources:
       - law: 상법
         article: 제466조
@@ -533,6 +539,9 @@ checks:
     triggers:
       keywords: [기업결합, 기업결합 신고, 공정거래위원회, 임원겸임]
     absence_check: true
+    # 특수규제 tier: 기업결합 신고는 신고대상 규모(자산총액·매출액 기준 — 문언 외 사실)로 적용이 결정됨 → conditional(리포트 "적용 시 확인" 접힘).
+    # precondition은 모듈(M-ANTITRUST) suggest_keywords와 동일해 중복(no-op)이라 부여하지 않음.
+    tier: conditional
     sources:
       - law: 독점규제 및 공정거래에 관한 법률
         article: 제11조

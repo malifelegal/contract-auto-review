@@ -31,6 +31,10 @@ checks:
     triggers:
       keywords: [지급기일, 60일, 대금 지급, 하도급대금, 지급 기한]
     absence_check: true
+    # 특수규제 tier: 하도급법 적용 여부는 계약 문언이 아니라 당사자 자격·규모(원사업자 요건)로 결정됨 —
+    # 문언 게이트(absence_precondition)로는 판정 불가하므로 conditional(리포트 "적용 시 확인" 접힘)만 부여.
+    # '하도급' 어휘 없는 용역계약도 실질이 하도급이면 적용될 수 있어 접힌 리마인더는 유지.
+    tier: conditional
     sources:
       - law: 하도급거래 공정화에 관한 법률
         article: 제13조

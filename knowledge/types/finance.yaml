@@ -55,6 +55,8 @@ checks:
     triggers:
       keywords: [이자, 이자율, 이율]
     absence_check: true
+    # 조건부 부재체크: 이자 관련 어휘가 본문에 있을 때만 부재알람(무이자 대여·계열사 자금대여 등에서 이자율 누락 오탐 방지).
+    absence_precondition: [이자, 이자율, 이율, 유이자]
     sources:
       - law: 민법
         article: 제600조
@@ -92,6 +94,8 @@ checks:
     triggers:
       keywords: [지연손해금, 연체이자, 지연배상, 연체료]
     absence_check: true
+    # 조건부 부재체크: 지연·연체 관련 어휘가 본문에 있을 때만 부재알람(무이자·단순 대여에서 지연손해금 조항 부재 오탐 방지, 법정이율로 갈음 가능).
+    absence_precondition: [지연손해금, 연체이자, 지연배상, 연체료, 연체]
     sources:
       - law: 민법
         article: 제397조

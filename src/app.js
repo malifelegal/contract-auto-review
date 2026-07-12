@@ -882,11 +882,15 @@ function renderReport() {
   });
   addressed.sort(_sevSort); verify.sort(_sevSort); consider.sort(_sevSort);
   // 필수 consider를 부속서류 커버 여부로 분리(#3).
+  // '해당없음'으로 검토자가 판정한 항목은 부재 알람에서 제외 — 사람이 해당 없음을 이미 판단했으므로
+  // 보완 필요로 다시 띄우지 않음(#①). 매칭 안 됐어도 검토자 판정이 우선.
+  function _isNA(cp) { var v = verdictStore[cp.id]; return v && v.verdict === "해당없음"; }
   var subCov = state.subDocCov || {};
-  var mustAll = consider.filter(function (it) { return it.severity === "필수"; });
+  var mustAll = consider.filter(function (it) { return it.severity === "필수" && !_isNA(it.cp); });
+  var mustNA = consider.filter(function (it) { return it.severity === "필수" && _isNA(it.cp); }); // 검토자가 해당없음 판정
   var mustConsider = mustAll.filter(function (it) { return !subCov[it.cp.id]; }); // 진짜 미확인
   var mustCovered = mustAll.filter(function (it) { return subCov[it.cp.id]; });   // 부속서류 커버
-  var recConsider = consider.filter(function (it) { return it.severity === "권장"; });
+  var recConsider = consider.filter(function (it) { return it.severity === "권장" && !_isNA(it.cp); });
 
   // 검토의견(코멘트)을 조항별로 모음 — 좌 컬럼용.
   var commentsByClause = {};   // clauseIndex -> [{cp, verdict, comment}]
@@ -947,6 +951,7 @@ function renderReport() {
     if (naCount) parts.push(naCount + "개 항목은 해당 없음");
     conclText = parts.join(", ") + ".";
     if (mustCore.length) conclText += " 필수 " + mustCore.length + "개는 계약서에서 아직 확인되지 않아 보완 필요.";
+    else if (mustNA.length && !mustCore.length) conclText += " 미확인 필수 항목은 검토자가 해당 없음으로 판정함 — 보완 불요.";
   } else if (mustCore.length) {
     conclCls = "concl-alert";
     conclText = "아직 검토의견 미기입. 계약 본질상 필요한 필수 항목 " + mustCore.length + "개가 계약서에서 확인되지 않음 — 우선 확인 필요.";

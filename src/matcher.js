@@ -14,15 +14,31 @@ if (typeof require !== "undefined") {
 }
 
 // ── 유형 감지·모듈 제안 (v2 유지) ────────────────────────────────
+// 성격 배타 게이트(A3): 유형 meta의 nature_signals(성격 강신호)가 복수 검출되면
+// 그 유형의 suppresses[]에 든 유형 점수를 0으로. 예: 화해계약 강신호(화해·상호양보·부제소 등)가
+// ≥NATURE_MIN이면 shareholders(상법 조직행위) 점수를 눌러 오탐 차단.
+// 단일 부수언급(화해 1회)으로 진성 주주간계약을 죽이지 않도록 임계는 복수(2).
+var NATURE_MIN = 2;
 function detectType(text, types) {
-  return types
-    .map(function (t) {
-      var score = (t.meta.detect_keywords || []).reduce(function (s, kw) {
-        return s + (text.split(kw).length - 1);
-      }, 0);
-      return { typeId: t.meta.type_id, score: score };
-    })
-    .sort(function (a, b) { return b.score - a.score; });
+  var t = String(text || "");
+  var scored = types.map(function (ty) {
+    var score = (ty.meta.detect_keywords || []).reduce(function (s, kw) {
+      return s + (t.split(kw).length - 1);
+    }, 0);
+    return { typeId: ty.meta.type_id, score: score };
+  });
+  // 성격 게이트: 강신호 복수 검출 유형의 suppresses 대상 점수를 0으로.
+  var byId = {};
+  scored.forEach(function (r) { byId[r.typeId] = r; });
+  types.forEach(function (ty) {
+    var sig = ty.meta.nature_signals, sup = ty.meta.suppresses;
+    if (!sig || !sig.length || !sup || !sup.length) return;
+    var hits = sig.reduce(function (n, kw) { return n + (t.indexOf(kw) !== -1 ? 1 : 0); }, 0);
+    if (hits >= NATURE_MIN) {
+      sup.forEach(function (id) { if (byId[id]) byId[id].score = 0; });
+    }
+  });
+  return scored.sort(function (a, b) { return b.score - a.score; });
 }
 
 // 본문 키워드로 모듈 활성 제안. activation:"strong" 모듈은 특수 규제(전금감규 §60 등)라

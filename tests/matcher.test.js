@@ -426,3 +426,36 @@ test("suggestModules: 본문 키워드로 모듈 활성화를 제안한다", () 
   assert.deepStrictEqual(s, ["M-PRIV"]);
   assert.deepStrictEqual(suggestModules("무관한 내용", OUT_DOC.meta.modules), []);
 });
+
+// ── 성격 배타 게이트(A3): 화해계약 강신호가 상법 유형을 억제 ──────────
+const NATURE_TYPES = [
+  { meta: {
+    type_id: "settlement",
+    detect_keywords: ["화해", "상호양보", "부제소", "청구권 포기"],
+    nature_signals: ["화해", "상호양보", "부제소", "청구권 포기"],
+    suppresses: ["shareholders"],
+  } },
+  { meta: {
+    type_id: "shareholders",
+    detect_keywords: ["주주간", "주식양도", "의결권", "우선매수"],
+  } },
+];
+
+test("detectType 성격게이트: 화해 강신호 복수면 shareholders 억제(화해합의서 오탐 차단)", () => {
+  // 화해합의서인데 '주식양도' 부수 언급 — 화해 강신호(화해·상호양보·부제소) 3개 검출.
+  const text = "화해합의서. 당사자는 상호양보하여 분쟁을 종결하고 향후 부제소한다. " +
+    "대상은 갑이 을에게 한 주식양도 대금 정산 분쟁이다.";
+  const ranked = detectType(text, NATURE_TYPES);
+  assert.strictEqual(ranked[0].typeId, "settlement");
+  const sh = ranked.find((r) => r.typeId === "shareholders");
+  assert.strictEqual(sh.score, 0, "shareholders 점수가 0으로 억제되어야 함");
+});
+
+test("detectType 성격게이트: 진성 주주간계약은 억제 안 됨(화해 부수언급 1회 무시)", () => {
+  // 주주간계약 — 화해는 1회만 부수 언급(임계 미달), 상법 신호 지배적.
+  const text = "주주간계약. 주식양도 제한, 의결권 공동행사, 우선매수권을 정한다. " +
+    "분쟁 시 화해를 시도할 수 있다.";
+  const ranked = detectType(text, NATURE_TYPES);
+  assert.strictEqual(ranked[0].typeId, "shareholders");
+  assert.ok(ranked[0].score > 0, "shareholders가 억제되지 않아야 함");
+});

@@ -31,3 +31,10 @@
 2. 각 스테이지 후 validate + goldset + pytest + JS 통과 확인.
 3. 삭제 전 id 참조 grep(goldset cases·tests·docs).
 4. §60 계열의 tier:conditional·activation:strong, PII의 activation:confirm, absence_precondition 등 기존 게이트 속성 보존.
+
+## 완료 기록 (2026-07-14)
+- [x] C1 엔진(59d632c): common 모듈 병합 스크리닝 — 무회귀
+- [x] C2 횡단 12모듈(4879220·e5dce57): 중복 33 소멸+신규 14, 신규 모듈 원문 전수검증(REL-07 quote 교정)
+- [x] C3 9유형(d04fc39): procurement·channel 신설, it-outsourcing 해체, 골드셋 9/9
+- [x] C4 리스크 재검수(bdd892b): 상향 11·CMN 편면성 재작성 4·신규 5·중복 기각 6 — check 249
+- [x] Phase D 인프라(7807675): 6,631건 시뮬레이션, detect 공백 보강 — 감지 68→73.2%(계약명 하한)

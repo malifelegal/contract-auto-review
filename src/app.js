@@ -848,12 +848,21 @@ function renderClauses() {
     var detail = document.getElementById("mapping-detail");
     if (ci === "consider") {
       // 검토 제안 전용 — 조항 매핑 없음. 각 항목에 판정·코멘트(오류 여부 검토).
-      var items = considerList.map(renderConsiderItem).join("") ||
+      // 부속서류 커버 항목(#③)은 '진짜 미확인'과 분리 — 반영된 사실이 검토 필요처럼 보이지 않게.
+      var subCov = state.subDocCov || {};
+      var uncovered = considerList.filter(function (r) { return !subCov[r.cpId]; });
+      var covered = considerList.filter(function (r) { return subCov[r.cpId]; });
+      var items = uncovered.map(renderConsiderItem).join("") ||
         '<p class="compare-empty">검토 제안 항목 없음</p>';
+      var coveredHtml = covered.length
+        ? '<h3 class="subdoc-covered-head"><span class="badge cov-subdoc">✓ 부속서류 반영</span> 부속 서류에서 확인된 항목</h3>' +
+          '<p class="consider-hint">주 계약서엔 없지만 부속 서류에서 매칭 확인됨 — 커버 적정성만 확인하세요.</p>' +
+          covered.map(renderConsiderItem).join("")
+        : "";
       detail.innerHTML =
         '<div class="consider-panel"><h3><span class="badge cov-consider">! 검토 제안</span> 계약서에서 확인되지 않은 항목</h3>' +
         '<p class="consider-hint">각 항목이 실제로 빠진 것인지(오류) 아니면 해당 없는지 검토하고 의견을 남기세요.</p>' +
-        items + "</div>";
+        items + coveredHtml + "</div>";
       bindVerdictControls(detail, function () { showClause("consider"); refreshClauseCounts(); renderReport(); });
       return;
     }

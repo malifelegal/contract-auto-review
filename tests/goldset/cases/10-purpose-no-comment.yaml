@@ -1,0 +1,14 @@
+# 회귀 케이스: 전문·목적 조항 코멘트 부착 금지 (2026-07-13 실사용 피드백 ①)
+# 목적 조항에 위탁범위 등 구체 어휘가 몰려 있어도, 구체 검토항목이 목적 조항에
+# 매칭(addressed/verify)으로 붙으면 안 됨 — weak-role 강등으로 quiet 처리.
+# 검증 방식: 목적 조항 하나뿐인 계약 → 구체 항목이 전부 quiet(=addressed 0)이어야 함.
+id: purpose-no-comment
+desc: 목적 조항 단독 계약 — 구체 항목의 목적 조항 부착 금지(weak-role)
+detect_expected: outsourcing
+addressed_must_exclude: [CORE-01, CORE-02, CORE-03, CORE-07, PRIV-01]
+text: |
+  업무위탁계약서
+
+  제1조(목적) 이 계약은 갑이 을에게 위탁하는 위탁업무의 범위, 재위탁의 제한, 개인정보 처리위탁,
+  수수료 지급, 손해배상, 계약기간, 해지, 비밀유지 등 위탁 업무 수행에 관한 제반 사항을 정함을
+  목적으로 한다.

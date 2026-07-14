@@ -17,14 +17,12 @@ const results = cases.map(function (c) {
   const ranked = detectType(text, types);
   const detected = pickType(ranked);
   const doc = types.find(function (t) { return t.meta.type_id === detected; }) || null;
-  // 모듈 활성 — app.js renderScreening과 동일: always_on + 본문 제안.
-  let active = [];
-  if (doc) {
-    const suggested = suggestModules(text, doc.meta.modules || []);
-    active = (doc.meta.modules || [])
-      .filter(function (m) { return m.always_on || suggested.on.indexOf(m.id) !== -1; })
-      .map(function (m) { return m.id; });
-  }
+  // 모듈 활성 — app.js renderScreening과 동일: common(횡단 X-* 풀)+유형 모듈 병합, always_on + 본문 제안.
+  const modList = (common.meta.modules || []).concat(doc ? doc.meta.modules || [] : []);
+  const suggested = suggestModules(text, modList);
+  const active = modList
+    .filter(function (m) { return m.always_on || suggested.on.indexOf(m.id) !== -1; })
+    .map(function (m) { return m.id; });
   const docs = [{ checkpoints: common.checks }, { checkpoints: doc ? doc.checks : [] }];
   const r = analyze(clauses, docs, active);
   return {

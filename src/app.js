@@ -462,16 +462,19 @@ function _detectInfoHtml() {
 /* ---------- 분석 모드: 모듈 스크리닝 ---------- */
 function renderScreening() {
   var doc = typeDoc(document.getElementById("checklist-type").value);
-  if (!doc) {
+  // 횡단모듈(Phase C): common.meta.modules(X-* 풀)는 유형과 무관하게 스크리닝 —
+  // 유형 미확정 계약에도 PII·하도급 등 횡단 검토가 실질 신호로 붙음.
+  var modList = (CR.common.meta.modules || []).concat(doc ? doc.meta.modules : []);
+  if (!modList.length) {
     document.getElementById("screening").innerHTML = "";
     state.activeModules = [];
     return;
   }
-  var suggested = suggestModules(state.text, doc.meta.modules);
-  state.activeModules = doc.meta.modules
+  var suggested = suggestModules(state.text, modList);
+  state.activeModules = modList
     .filter(function (m) { return m.always_on || suggested.on.indexOf(m.id) !== -1; })
     .map(function (m) { return m.id; });
-  var chips = doc.meta.modules.map(function (m) {
+  var chips = modList.map(function (m) {
     if (m.always_on)
       return '<span class="module-chip on">' + esc(m.name) + " (기본)</span>";
     var on = state.activeModules.indexOf(m.id) !== -1;
@@ -482,7 +485,7 @@ function renderScreening() {
       esc(m.name) + (sug ? " ⚡본문 검출" : "") + (askMode ? " ? 확인 필요" : "") + "</label>";
   }).join("");
   // 약신호 질문(②): 문언만으론 실제 취급 여부 판단 불가한 모듈(confirm) — 추측 대신 사람에게 물음.
-  var askQs = doc.meta.modules
+  var askQs = modList
     .filter(function (m) { return suggested.ask.indexOf(m.id) !== -1 && m.screening_question; })
     .map(function (m) {
       return '<div class="ask-q">? <strong>' + esc(m.name) + "</strong> — " + esc(m.screening_question) +

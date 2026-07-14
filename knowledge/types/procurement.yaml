@@ -1,7 +1,10 @@
 meta:
-  type_id: service-purchase
-  type_name: 일반 용역·구매
-  detect_keywords: [납품, 구매, 물품, 발주, 검수, 용역, 도급, 공급, 하도급, 렌탈, 임대차, 설치, 제작, 공사, 설계, 감리, 인쇄, 컨설팅, 이용계약]
+  type_id: procurement
+  type_name: 조달(물품·용역·시스템·임대차)
+  # C3 재편: service-purchase + it-outsourcing 잔여 병합. 검수·하자·대금·해지 체크셋이 동일한
+  # "돈이 나가는 조달" 통합 유형. IT 특수 규제는 X-EFIN·X-CLOUD·X-IP 횡단모듈이 커버.
+  # detect는 실계약명 6,631건 빈도 어휘(구매353·물품267·용역693·유지보수122·구축115·렌탈64·임대차62).
+  detect_keywords: [납품, 구매, 물품, 발주, 검수, 용역, 도급, 공급, 하도급, 렌탈, 리스, 임대차, 설치, 제작, 공사, 설계, 감리, 인쇄, 컨설팅, 이용계약, 유지보수, 시스템 구축, 구축, 고도화, 솔루션, 소프트웨어, 라이선스, 단가계약]
   modules:
     - id: M-UNFAIR
       name: 부당특약·불공정약관
@@ -11,8 +14,8 @@ meta:
     - id: M-DELIVERY
       name: 납품·검수·하자·위험부담
       always_on: false
-      screening_question: 물품 납품 또는 용역 완성물의 인도·검수가 예정되어 있는가?
-      suggest_keywords: [납품, 검수, 검사, 인수, 하자, 지체상금]
+      screening_question: 물품 납품 또는 용역·시스템 완성물의 인도·검수가 예정되어 있는가?
+      suggest_keywords: [납품, 검수, 검사, 인수, 하자, 지체상금, 산출물, SLA]
 checks:
   # ── M-PAY: 하도급거래 공정화에 관한 법률 제13조·제13조의2·제14조·제16조·제4조 ──
   - id: SP-UNF-01
@@ -434,3 +437,54 @@ checks:
         quote: '전2조에 의한 권리는 매수인이 그 사실을 안 날로부터 6월내에 행사하여야 한다'
         verified: true
     note: 제척기간은 임의규정 — 특약으로 조정 가능
+  # ── (구 it-outsourcing 잔여 편입 — 검수·하자·유지보수·SLA) ──
+  - id: ITDL-03
+    module: M-DELIVERY
+    check: 산출물의 검수·인수 기준(검사 항목·합격 기준)과 검수 기한·재검수 절차가 규정되어 있는가
+    label: "검수·인수 기준"
+    severity: 참고
+    severity_basis: "실무 관행 항목(법령 강제 아님)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [검수, 인수, 검사, 합격 기준, 검수 기한]
+    absence_check: true
+    sources: []
+  - id: ITDL-04
+    module: M-DELIVERY
+    check: 검수 완료·인도 후 하자담보(무상 하자보수) 기간과 하자 대응 절차가 규정되어 있는가
+    label: "하자담보 기간·절차"
+    severity: 참고
+    severity_basis: "실무 관행 항목(법령 강제 아님)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [하자보수, 하자담보, 무상, 하자 보증, 결함]
+    absence_check: true
+    sources: []
+    note: (수급인 하자담보책임 민법 제667조 근거 — 로컬 DB 미수록, 원문 미확인)
+  - id: ITDL-05
+    module: M-DELIVERY
+    check: 유지보수의 대상·범위·대가와 별도계약 여부(무상 하자보수와의 구분)가 규정되어 있는가
+    label: "유지보수 범위·대가"
+    severity: 참고
+    severity_basis: "실무 관행 항목(법령 강제 아님)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [유지보수, 유지관리, 운영, 유상, 별도계약]
+    absence_check: true
+    sources: []
+  - id: ITDL-06
+    module: M-DELIVERY
+    check: 서비스수준(SLA)·가동률 기준과 장애 발생 시 대응·보상·손해배상 조항이 있는가
+    label: "SLA·장애 손해배상"
+    severity: 참고
+    severity_basis: "실무 관행 항목(법령 강제 아님)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [SLA, 서비스수준, 가동률, 장애, 서비스 지연]
+    absence_check: true
+    sources: []
+    note: 전자금융감독규정 제60조 제1항 제11호는 품질수준 연1회 평가 의무만 규정 — SLA 배상 수준은 계약 재량

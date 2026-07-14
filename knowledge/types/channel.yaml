@@ -1,0 +1,56 @@
+meta:
+  type_id: channel
+  type_name: 판매·모집채널
+  # C3 신설: GA·방카·퇴직연금 위탁판매 등 판매채널 계약(실데이터 ~19%). 모집규제 실체는
+  # X-INSMOD(횡단)가 견인, 채널 예금질권 담보는 X-SEC, 고객정보는 X-PII가 자동 부착.
+  # core는 채널 계약 고유의 실무 리스크(수수료 정산·해지 시 고객보호·이관)만 얇게 — 데이터 축적 후 보강.
+  detect_keywords: [위탁판매, 판매대리, 상품제공, 모집, GA, 방카, 방카슈랑스, 퇴직연금, 법인보험대리점, 설계사, 모집수수료, 판매채널, 제휴판매]
+  modules:
+    - id: M-CH
+      name: 채널 기본
+      always_on: true
+      screening_question: null
+      suggest_keywords: []
+checks:
+  - id: CH-01
+    module: M-CH
+    check: 모집·판매 수수료의 산정 기준과 정산 주기·방법이 특정되어 있는가
+    label: "수수료 산정·정산"
+    severity: 권장
+    severity_override: true
+    severity_basis: "실무 관행 항목(법령 강제 아님) — 수수료 분쟁이 채널 계약 최다 분쟁 유형(practice=참고 도출규칙 override)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [수수료, 정산, 산정, 지급 기준, 환수]
+    absence_check: true
+    sources: []
+    note: 선지급 수수료의 환수 조건(해약·승환 시)과 정산 이의절차를 함께 확인.
+  - id: CH-02
+    module: M-CH
+    check: 계약 해지·종료 시 기존 계약자 관리(이관·유지관리 책임)와 고객보호 조치가 규정되어 있는가
+    label: "해지 시 고객보호·이관"
+    severity: 권장
+    severity_override: true
+    severity_basis: "실무 관행 항목 — 채널 종료 시 고객 방치(고아계약)가 민원·감독 리스크로 직결(practice 도출규칙 override)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [해지, 종료, 이관, 유지관리, 계약자 보호, 인수인계]
+    absence_check: true
+    sources: []
+    note: 채널 부실·폐업 시 보유계약의 유지관리 주체와 고객 통지 절차 확인.
+  - id: CH-03
+    module: M-CH
+    check: 채널의 부실·귀책으로 인한 손해(불완전판매 배상·과태료 구상)의 분담·구상 구조가 규정되어 있는가
+    label: "채널 귀책 구상"
+    severity: 권장
+    severity_override: true
+    severity_basis: "실무 관행 항목 — 모집조직 위반행위에 대한 보험회사 배상책임(보험업법 §102 구조) 대비 구상 확보 필요(practice 도출규칙 override)"
+    norm_type: 실무
+    basis: practice
+    triggers:
+      keywords: [구상, 배상, 귀책, 불완전판매, 손해배상, 면책]
+    absence_check: true
+    sources: []
+    note: 회사가 1차 배상 후 채널에 구상하는 구조의 실효성(담보·보증과 연계)을 확인. §102 원문 확인 후 statute 승격 후보.

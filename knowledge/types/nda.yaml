@@ -1,7 +1,7 @@
 meta:
   type_id: nda
-  type_name: NDA(비밀유지계약)
-  detect_keywords: [비밀유지, 비밀정보, 영업비밀, 기밀, NDA, 비공개, 비밀보장]
+  type_name: 정보·비밀보호(NDA·정보제공)
+  detect_keywords: [비밀유지, 비밀정보, 영업비밀, 기밀, NDA, 비공개, 비밀보장, 기밀유지협약, 정보제공 계약, 본인확인, 개인정보처리위탁]
   modules:
     - id: M-NDA
       name: 비밀유지 기본

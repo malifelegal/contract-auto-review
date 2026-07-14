@@ -56,6 +56,10 @@ def score(cases, results):
         # detect_expected: null(미확정 기대)도 유효한 라벨 — 키 존재로 판정.
         if "detect_expected" in c and r["detected"] != c["detect_expected"]:
             errs.append(f"유형감지: 기대 {c['detect_expected']} ≠ 실제 {r['detected']}")
+        active = set(r.get("activeModules") or [])
+        for mid in c.get("active_must_include") or []:
+            if mid not in active:
+                errs.append(f"모듈 미활성: {mid}가 activeModules에 없음")
         consider = set(r["consider"])
         for cid in c.get("consider_must_include") or []:
             if cid not in consider:

@@ -1,7 +1,7 @@
 meta:
   type_id: investment
   type_name: 투자
-  detect_keywords: [투자, 펀드, 사모펀드, 집합투자, 수익증권, 출자, 조합, 투자신탁, 투자일임, 신탁계약, capital call, 캐피탈콜, 변액펀드, 블라인드, PEF, 메자닌, 리츠]
+  detect_keywords: [투자, 펀드, 사모펀드, 집합투자, 수익증권, 출자, 조합, 투자신탁, 투자일임, 신탁계약, capital call, 캐피탈콜, Capital Call, 변액펀드, 블라인드, PEF, 메자닌, 리츠, ISDA, CSA, 장외파생, 증거금]
   modules:
     - id: M-FUND
       name: 집합투자·펀드

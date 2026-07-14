@@ -18,12 +18,6 @@ meta:
       always_on: false
       screening_question: 조합(합자조합 등)에 유한책임사원(LP)으로 출자하는가?
       suggest_keywords: [출자, 조합, LP, 업무집행조합원, capital call, 캐피탈콜]
-    - id: M-SPECIAL
-      name: 보험 특별계정(변액)
-      always_on: false
-      screening_question: 변액보험·퇴직연금 등 특별계정 자산의 운용 투자인가?
-      suggest_keywords: [변액, 특별계정, 퇴직연금]
-
 checks:
   # ── M-FUND 집합투자·펀드 ─────────────────────────────────────
   - id: INV-FUND-01
@@ -167,21 +161,3 @@ checks:
     sources: []
 
   # ── M-SPECIAL 보험 특별계정 ──────────────────────────────────
-  - id: INV-SP-01
-    check: 변액보험 등 특별계정 자산의 투자인 경우 특별계정 구분·구분회계가 전제되어 있는가
-    label: "특별계정 구분회계"
-    module: M-SPECIAL
-    severity: 필수
-    severity_basis: 강행규정 — 보험업법 제108조(특별계정 자산 구분 회계처리)
-    norm_type: 강행
-    basis: statute
-    triggers:
-      keywords: [특별계정, 변액, 구분 회계, 준비금]
-    absence_check: false
-    sources:
-      - law: 보험업법
-        article: 제108조
-        clause: 제2항
-        quote: 특별계정에 속하는 자산은 다른 특별계정에 속하는 자산 및 그 밖의 자산과 구분하여 회계처리하여야 한다
-        verified: true
-        source_type: law

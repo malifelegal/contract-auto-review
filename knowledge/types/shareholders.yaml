@@ -29,11 +29,6 @@ meta:
       always_on: false
       screening_question: 분쟁 종결·정산을 위한 화해·합의(합의서) 요소가 있는가?
       suggest_keywords: [화해, 합의서, 부제소, 청구권 포기, 분쟁 종결]
-    - id: M-ANTITRUST
-      name: 공정거래(기업결합신고)
-      always_on: false
-      screening_question: 지분취득·임원겸임 등이 기업결합신고 대상 규모에 해당할 수 있는가?
-      suggest_keywords: [기업결합, 경쟁제한, 공정거래위원회, 지분 취득, 임원겸임]
 checks:
   # ── M-SHARE: 주식 처분 통제 (상법 제335조·제335조의2·제336조·제337조) ──
   - id: SH-SHARE-01
@@ -528,48 +523,3 @@ checks:
     sources: []
     note: 범위를 특정하지 않은 포괄적·전면적 부제소 합의는 효력이 제한될 수 있음
   # ── M-ANTITRUST: 공정거래 (독점규제 및 공정거래에 관한 법률 제11조·제9조) ──
-  - id: SH-ANT-01
-    module: M-ANTITRUST
-    check: 지분취득·임원겸임 등이 기업결합 신고 대상 규모에 해당하는지 검토하고 신고 협조 조항이 있는가
-    label: "기업결합 신고 협조"
-    severity: 필수
-    severity_basis: "근거 조문이 강행규정(의무)임 — 독점규제 및 공정거래에 관한 법률 제11조"
-    norm_type: 강행
-    basis: statute
-    triggers:
-      keywords: [기업결합, 기업결합 신고, 공정거래위원회, 임원겸임]
-    absence_check: true
-    # 특수규제 tier: 기업결합 신고는 신고대상 규모(자산총액·매출액 기준 — 문언 외 사실)로 적용이 결정됨 → conditional(리포트 "적용 시 확인" 접힘).
-    # precondition은 모듈(M-ANTITRUST) suggest_keywords와 동일해 중복(no-op)이라 부여하지 않음.
-    tier: conditional
-    sources:
-      - law: 독점규제 및 공정거래에 관한 법률
-        article: 제11조
-        clause: 제1항 제1호
-        quote: '다른 회사의 발행주식총수(「상법」 제344조의3제1항 및 제369조제2항ㆍ제3항의 의결권 없는 주식의 수는 제외한다. 이하 이 장에서 같다)의 100분의 20[「자본시장과 금융투자업에 관한 법률」에 따른 주권상장법인(이하 "상장법인"이라 한다)의 경우에는 100분의 15를 말한다] 이상을 소유하게 되는 경우'
-        verified: true
-        source_type: law
-      - law: 독점규제 및 공정거래에 관한 법률
-        article: 제11조
-        clause: 제1항
-        quote: '대통령령으로 정하는 바에 따라 공정거래위원회에 신고하여야 한다'
-        verified: true
-        source_type: law
-    note: 지분율 기준(20%, 상장법인 15%)은 법률 제11조 제1항 제1호 본문 — 자산총액·매출액 규모기준만 대통령령 위임
-  - id: SH-ANT-02
-    module: M-ANTITRUST
-    check: 본 지분거래가 경쟁을 실질적으로 제한하는 기업결합에 해당하지 않음이 검토되었는가
-    label: "경쟁제한성 검토"
-    severity: 필수
-    severity_basis: "근거 조문이 강행규정(의무)임 — 독점규제 및 공정거래에 관한 법률 제9조"
-    norm_type: 강행
-    basis: statute
-    triggers:
-      keywords: [경쟁제한, 경쟁을 실질적으로, 기업결합 제한, 거래분야]
-    absence_check: false
-    sources:
-      - law: 독점규제 및 공정거래에 관한 법률
-        article: 제9조
-        clause: 제1항
-        quote: '일정한 거래분야에서 경쟁을 실질적으로 제한하는 행위를 하여서는 아니 된다'
-        verified: true

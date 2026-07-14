@@ -8,14 +8,6 @@ meta:
       always_on: true
       screening_question: null
       suggest_keywords: []
-    - id: M-PII
-      name: 개인정보 포함 비밀정보
-      always_on: false
-      screening_question: 비밀정보에 개인정보·개인신용정보가 포함되는가?
-      suggest_keywords: [개인정보, 개인신용정보, 고객정보, 정보주체]
-      # ② 개인정보 모듈은 confirm 등급 — 강신호(특이어 2+ 또는 반복 3회+)만 자동 활성,
-      #    약신호(상투 준수조항 1회 등)는 질문으로 사람 확인(문언만으론 실제 취급 여부 판단 불가).
-      activation: confirm
 checks:
   # ── M-NDA: 영업비밀 요건 (부정경쟁방지 및 영업비밀보호에 관한 법률 제2조 제2호) ──
   - id: NDA-01
@@ -345,59 +337,3 @@ checks:
     absence_check: false
     sources: []
   # ── M-PII: 비밀정보에 개인정보 포함 시 (개인정보 보호법 제26조) ──
-  - id: NDA-PII-01
-    module: M-PII
-    check: 비밀정보에 개인정보가 포함된 경우 수령자가 위탁받은 업무 범위를 초과하여 개인정보를 이용하거나 제3자에게 제공하지 못하도록 하는 조항이 있는가
-    label: "개인정보 목적외 이용금지"
-    severity: 필수
-    severity_basis: "근거 조문이 강행규정(의무)임 — 개인정보 보호법 제26조"
-    norm_type: 강행
-    basis: statute
-    triggers:
-      keywords: [개인정보, 범위를 초과, 목적 외 이용, 제3자에게 제공, 정보주체]
-    absence_check: true
-    sources:
-      - law: 개인정보 보호법
-        article: 제26조
-        clause: 제5항
-        quote: '수탁자는 개인정보처리자로부터 위탁받은 해당 업무 범위를 초과하여 개인정보를 이용하거나 제3자에게 제공하여서는 아니 된다'
-        verified: true
-        source_type: law
-    note: NDA가 개인정보 처리를 수반하면 개인정보 보호법 제26조 처리위탁 규율이 병행 적용됨
-  - id: NDA-PII-02
-    module: M-PII
-    check: 개인정보가 포함된 비밀정보를 제3자에게 다시 위탁·제공하는 경우 제공자(위탁자)의 동의를 받도록 하는 조항이 있는가
-    label: "개인정보 재위탁 동의"
-    severity: 필수
-    severity_basis: "근거 조문이 강행규정(의무)임 — 개인정보 보호법 제26조"
-    norm_type: 강행
-    basis: statute
-    triggers:
-      keywords: [재위탁, 다시 위탁, 개인정보, 동의]
-    absence_check: true
-    sources:
-      - law: 개인정보 보호법
-        article: 제26조
-        clause: 제6항
-        quote: '수탁자는 위탁받은 개인정보의 처리 업무를 제3자에게 다시 위탁하려는 경우에는 위탁자의 동의를 받아야 한다'
-        verified: true
-        source_type: law
-  - id: NDA-PII-03
-    module: M-PII
-    check: NDA가 개인정보 처리위탁을 수반하는 경우 개인정보 보호법 제26조 제1항 법정 기재사항을 갖춘 문서 요건이 반영되어 있는가
-    label: "개인정보보호법 문서요건"
-    severity: 필수
-    severity_basis: "근거 조문이 강행규정(의무)임 — 개인정보 보호법 제26조"
-    norm_type: 강행
-    basis: statute
-    triggers:
-      keywords: [처리위탁, 개인정보 처리, 문서, 위탁 문서, 법정 기재]
-    absence_check: false
-    sources:
-      - law: 개인정보 보호법
-        article: 제26조
-        clause: 제1항
-        quote: '개인정보처리자가 제3자에게 개인정보의 처리 업무를 위탁하는 경우에는 다음 각 호의 내용이 포함된 문서로 하여야 한다'
-        verified: true
-        source_type: law
-    note: 개인정보 처리위탁을 겸하는 NDA는 업무위탁 유형(M-PRIV)의 법정 기재사항 체크와 병행 검토 권장

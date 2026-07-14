@@ -131,18 +131,6 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 /* 리포트 — 긍정-먼저 검토 워크시트 */
 #report-body h2 { font-size: 18px; margin: 0 0 6px; }
 .report-intro { color: #556; font-size: 13px; margin: 0 0 16px; line-height: 1.6; }
-.report-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-.tile { border: 1px solid #e0e2ee; border-radius: 10px; padding: 16px 18px;
-        display: flex; flex-direction: column; gap: 3px; background: #fff; }
-.tile .tile-n { font-size: 30px; font-weight: 700; line-height: 1; }
-.tile .tile-label { font-size: 14px; font-weight: 600; }
-.tile .tile-sub { font-size: 12px; color: #778; }
-.tile-addressed { border-top: 4px solid #1e8449; }
-.tile-addressed .tile-n { color: #1e8449; }
-.tile-verify { border-top: 4px solid #1a6f96; }
-.tile-verify .tile-n { color: #1a6f96; }
-.tile-consider { border-top: 4px solid #b9770e; }
-.tile-consider .tile-n { color: #b9770e; }
 @media (max-width: 720px) { .report-tiles { grid-template-columns: 1fr; } }
 
 .report-sec-block { margin-bottom: 16px; }
@@ -164,8 +152,6 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 .report-item .ri-loc { font-size: 12px; color: #556; margin: 6px 0 2px; }
 .report-item .ri-reason { font-size: 12px; color: #667; margin: 2px 0; }
 .report-item .ri-src { font-size: 12px; color: #556; margin: 6px 0 4px; }
-.signoff { display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
-           color: #445; margin-top: 6px; cursor: pointer; }
 .report-more { margin-top: 4px; }
 .report-more > summary { cursor: pointer; font-size: 13px; color: #48587a; padding: 6px 0; }
 
@@ -244,9 +230,6 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 .concl-alert { background: #fdecea; color: #b32b1f; border: 1px solid #f0b4ab; }
 .concl-caution { background: #fef6e7; color: #9a6a10; border: 1px solid #f2d492; }
 .concl-ok { background: #e9f7ef; color: #1c7a44; border: 1px solid #b6e2c8; }
-.tile-consider.tile-must { border-top-color: #c0392b; }
-.tile-consider.tile-must .tile-n { color: #c0392b; }
-.tile-consider.tile-must .tile-sub { color: #c0392b; font-weight: 600; }
 
 /* 조항별 보기 — 검토 제안 전용 진입·패널 */
 .clause-consider { border-left: 4px solid #e0a83e; background: #fffdf7; }

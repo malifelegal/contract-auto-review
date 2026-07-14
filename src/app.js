@@ -936,79 +936,11 @@ function _clauseHeading(idx) {
   var c = state.clauses[idx];
   return c ? c.heading : ("조항#" + idx);
 }
-function _signoff(cp, saved) {
-  var ck = saved[cp.id] ? " checked" : "";
-  return '<label class="signoff"><input type="checkbox" data-cp="' + esc(cp.id) + '"' + ck +
-    "> 검토 완료 표시</label>";
-}
 // 리포트에서 각 항목의 검토의견 배지(있으면).
 function _verdictBadge(cpId) {
   var v = verdictStore[cpId];
   if (!v || !v.verdict) return "";
   return ' <span class="vd-badge ' + VERDICT_CLS[v.verdict] + '">' + esc(v.verdict) + "</span>";
-}
-function _reportTile(cov, n, label, sub) {
-  return '<div class="tile tile-' + cov + '"><span class="tile-n">' + n + "</span>" +
-    '<span class="tile-label">' + esc(label) + "</span>" +
-    '<span class="tile-sub">' + esc(sub) + "</span></div>";
-}
-// 검토 제안(consider): 왜 봐야 하는지(severity_basis) + check 질문 + 근거 + sign-off.
-function _considerItem(it, saved) {
-  var cp = it.cp;
-  return '<div class="report-item consider-item">' +
-    '<div class="ri-head"><span class="sev sev-' + cp.severity + '" title="' +
-    esc(cp.severity_basis || "") + '">' + esc(cp.severity) + "</span>" +
-    '<span class="ri-q">' + labelQ(cp) + "</span>" + _verdictBadge(cp.id) + "</div>" +
-    (cp.severity_basis ? '<p class="ri-why">왜 봐야 하는지: ' + esc(cp.severity_basis) + "</p>" : "") +
-    '<p class="ri-src">근거 ' + evidenceCell(cp) + "</p>" +
-    _signoff(cp, saved) + "</div>";
-}
-// 확인 권장(verify): 관련 조항·이유 + sign-off.
-function _verifyItem(it, saved) {
-  var cp = it.cp, res = it.res;
-  var loc = res.best ? _clauseHeading(res.best.clauseIndex) : "";
-  var reasons = (res.best && res.best.reasons) || [];
-  return '<div class="report-item verify-item">' +
-    '<div class="ri-head"><span class="sev sev-' + cp.severity + '" title="' +
-    esc(cp.severity_basis || "") + '">' + esc(cp.severity) + "</span>" +
-    '<span class="ri-q">' + labelQ(cp) + "</span>" + _verdictBadge(cp.id) + "</div>" +
-    (loc ? '<p class="ri-loc">관련 조항: ' + esc(loc) + "</p>" : "") +
-    (reasons.length ? '<p class="ri-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
-    _signoff(cp, saved) + "</div>";
-}
-// 짚어진 항목(addressed): 어느 조항에서 반영됐는지 — 긍정 정보 노출.
-function _addressedItem(it) {
-  var cp = it.cp, res = it.res;
-  var loc = res.best ? _clauseHeading(res.best.clauseIndex) : "";
-  var reasons = (res.best && res.best.reasons) || [];
-  return '<div class="report-item addressed-item">' +
-    '<div class="ri-head"><span class="badge cov-addressed">✓ 반영</span>' +
-    '<span class="ri-q">' + labelQ(cp) + "</span>" + _verdictBadge(cp.id) + "</div>" +
-    (loc ? '<p class="ri-loc">' + esc(loc) + "에서 반영</p>" : "") +
-    (reasons.length ? '<p class="ri-reason">' + esc(reasons.join("; ")) + "</p>" : "") +
-    "</div>";
-}
-// 조항별 검토 현황(선택): 반영/확인 건수 요약.
-function _clauseSummarySection(addressed, verify) {
-  var byClause = {};
-  addressed.concat(verify).forEach(function (it) {
-    if (!it.res.best) return;
-    var ci = it.res.best.clauseIndex;
-    var g = byClause[ci] || (byClause[ci] = { a: 0, v: 0 });
-    if (it.res.coverage === "addressed") g.a++; else g.v++;
-  });
-  var rows = state.clauses.map(function (c) {
-    var g = byClause[c.index];
-    if (!g) return "";
-    var parts = [];
-    if (g.a) parts.push("반영 " + g.a);
-    if (g.v) parts.push("확인 " + g.v);
-    return '<li><strong>' + esc(c.heading) + '</strong> <span class="cs-cnt">' +
-      esc(parts.join(" · ")) + "</span></li>";
-  }).filter(Boolean);
-  if (!rows.length) return "";
-  return '<details class="report-sec"><summary>조항별 검토 현황</summary>' +
-    '<ul class="clause-summary">' + rows.join("") + "</ul></details>";
 }
 // 리포트 = 2단 구성(#5 재구성): 좌=계약서 문안+검토의견 코멘트 / 우=종합 서술형 리포트.
 function renderReport() {

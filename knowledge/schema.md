@@ -10,16 +10,23 @@ meta:
   type_id: outsourcing        # 파일명과 일치. common.yaml은 "common"
   type_name: 업무위탁          # UI 표시명
   detect_keywords: [위탁, 수탁]  # 유형 자동 감지용 (common은 빈 리스트)
-  modules:                    # 규제 레짐 모듈. 없으면 빈 리스트
-    - id: M-PRIV              # 파일 내 유일
+  nature_signals: [화해, 부제소]  # 선택. 성격 배타 게이트 — 이 강신호가 본문에 NATURE_MIN(2)개+ 검출되면
+  suppresses: [shareholders]     #   suppresses의 유형 점수를 0으로(오탐 억제). settlement가 사용 중
+  modules:                    # 규제 레짐 모듈. 없으면 빈 리스트. common.yaml의 모듈(X-*)은 횡단 풀 —
+                              #   유형과 무관하게 전 계약에서 스크리닝됨(유형 미확정 포함)
+    - id: M-PRIV              # 파일 내 유일. 횡단 모듈은 X- 접두어 관례
       name: 개인(신용)정보 처리위탁
       always_on: false        # true면 스크리닝 없이 항상 활성
       screening_question: 위탁 업무에 개인(신용)정보 처리가 포함되는가?
       suggest_keywords: [개인정보, 신용정보]   # 본문 검출 시 활성화 제안
+      activation: confirm     # 선택. 모듈 활성 등급 — 아래 "모듈 활성 등급" 참조. 생략 시 기본(1개 검출로 활성)
 checks:
   - id: OUT-09-1               # 전역 유일. 유형약어-번호(-원자순번), 조문 항·호 = 1 항목
     check: 위탁 문서에 "위탁업무 수행 목적 외 개인정보의 처리 금지" 사항이 포함되어 있는가   # 질문 1문장. 서술형 코멘트 금지
+    label: "목적외 처리 금지"    # 선택. UI 짧은 라벨(8자 내외). 생략 시 check 전문 표시
     module: M-PRIV             # 생략 시 유형 기본 (항상 포함)
+    tier: conditional          # 선택. core(생략 기본)=유형 본질 | conditional=특수규제(법령상 별도 적용요건 —
+                               #   문언 밖 사실(당사자 자격·규모)로 적용이 결정). 리포트에서 "적용 시 확인"으로 접힘
     severity: 필수              # 필수 | 권장 | 참고 — norm_type·basis에서 도출 (아래 "심각도 도출 규칙")
     severity_basis: 근거 조문이 강행규정(의무)임 — 개인정보 보호법 제26조   # 심각도 근거 1문장. UI "왜 필수?" 답변용
     severity_override: false   # 선택. true면 도출 규칙과 달라도 경고 억제(의도적 예외). 생략 시 false
@@ -29,6 +36,11 @@ checks:
       keywords: [재위탁, 재수탁]   # 조항 본문 포함 검사 (OR)
       patterns: []                # JS 정규식 문자열 (선택)
     absence_check: true       # true: 매칭 조항 없으면 "누락 의심" 보고
+    absence_precondition: [질권, 근질권]   # 선택. 조건부 부재체크 — 본문에 이 어휘가 1개+ 있을 때만
+                               #   부재알람 발동(약한 게이트). 없으면 quiet. 생략 시 무조건 발동.
+                               #   "문언에 제도 채택이 드러나는" 항목에만 사용(문언 밖 사실로 적용이
+                               #   결정되면 tier: conditional이 맞음). 모듈 suggest_keywords와 동일
+                               #   어휘면 중복(no-op)이므로 금지
     sources:                  # basis=statute면 1개 이상 필수. 첫 항목에 quote 필수
       - law: 개인정보 보호법      # DB law_name과 일치해야 원문 첨부됨
         article: 제26조         # "제N조" / "제N조의M" 형태
@@ -88,6 +100,24 @@ check 항목에 `guidance` 키가 남아 있으면 `ValidationError("guidance는
 - `basis: practice`가 `norm_type`보다 우선함(실무 항목은 항상 참고).
 - `severity_basis`의 법령명·조문은 실제 `sources[0]`에서 가져옴(조문 표제 괄호는 생략, 예 "제3조(업무위탁 등)" → "제3조").
 - 규칙과 다르게 두어야 할 의도적 예외만 `severity_override: true` + `note`에 사유. 그 외에는 규칙대로 전량 재계산.
+
+## 모듈 활성 등급 (meta.modules[].activation — src/matcher.js suggestModules)
+
+| 등급 | 활성 조건 | 용도 |
+|---|---|---|
+| (생략, 기본) | 서로 다른 suggest_keywords 1개+ 검출 | 일반 모듈. 어휘가 충분히 특이할 때 |
+| `strong` | 서로 다른 키워드 **2개+** 검출, 아니면 꺼짐 | 특수 규제(전자금융 §60 등) — 오탐 억제 우선 |
+| `confirm` | 강신호(서로 다른 2개+ **또는** 총 출현 3회+)=자동 ON / 약신호(1~2회)=OFF+**질문 노출** / 무신호=OFF | 문언만으론 실제 취급 여부 판단 불가한 모듈(개인정보 등). 상투 준수조항 1회 ≈ 약신호 → 추측하지 않고 사람에게 물음 |
+
+## 오탐 억제 게이트 3층 (판정 기준 — P2에서 확립)
+
+| 층 | 장치 | 언제 쓰나 |
+|---|---|---|
+| 유형 | `nature_signals` + `suppresses` | 계약의 법적 성격이 다른 유형과 배타적일 때(화해 vs 상법 조직행위) |
+| 모듈 | `activation: strong/confirm` | 규제 모듈이 일반 계약에 오활성될 때 |
+| check | `absence_precondition` / `tier: conditional` | **문언에 제도 채택이 드러나면** precondition, **문언 밖 사실(당사자 자격·규모)로 적용이 결정되면** conditional |
+
+공통 원칙: 확신 없으면 게이트를 걸지 않음(누락검출 훼손이 오탐보다 나쁨). 게이트 추가·변경 시 `python3 build/goldset.py` before/after 필수.
 
 ## 배지 의미 (enrich 이후, UI 표시용 — build/enrich.py가 부여)
 

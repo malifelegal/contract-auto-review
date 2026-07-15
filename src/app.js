@@ -727,6 +727,107 @@ function bindVerdictControls(root, reRender) {
 }
 
 // 검토의견 내보내기/불러오기 (계약서 건별 JSON)
+/* ---------- 앱 내장 골드셋(폐쇄망) — 스냅샷 저장·일괄 채점 ----------
+   실계약은 반출 불가 → 케이스(본문 포함)는 폐쇄망 공유폴더에만 축적, 채점은 앱 안에서.
+   반출은 summaryText(본문 0자)만. 순수 로직은 goldset.js. */
+function _goldsetEnv() {
+  return { CR: CR, segmentContract: segmentContract, detectType: detectType,
+    pickType: pickType, suggestModules: suggestModules, analyze: analyze };
+}
+// 현재 검토(확인·교정 완료 상태)를 골드셋 케이스로 저장 — 리포트 탭 버튼.
+function exportGoldsetCase() {
+  if (!state.result) return;
+  var ranked = state.detectRanked || [];
+  var caseObj = Goldset.buildCase({
+    text: state.text,
+    typeId: state.typeId || null,
+    autoDetected: pickType(ranked),
+    activeModules: state.activeModules || [],
+    results: state.result.results,
+    subDocNames: (state.subDocs || []).map(function (d) { return d.name; }),
+    date: verdictToday(),
+    hash: verdictHash,
+    checksCount: allChecksForType(state.typeId).length
+  });
+  var blob = new Blob([JSON.stringify(caseObj, null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "goldset_" + (state.typeId || "undetermined") + "_" + verdictHash + "_" + verdictToday() + ".json";
+  a.click(); URL.revokeObjectURL(url);
+}
+// 골드셋 페인 — 케이스 파일 복수 로드 → 일괄 채점 → 결과 표 + 반출 요약.
+var _goldsetCases = [];
+var _goldsetDiffs = [];
+function initGoldsetPane() {
+  var files = document.getElementById("goldset-files");
+  var runBtn = document.getElementById("goldset-run");
+  var expBtn = document.getElementById("goldset-export");
+  var status = document.getElementById("goldset-status");
+  if (!files) return;
+  files.addEventListener("change", function () {
+    var list = Array.prototype.slice.call(files.files || []);
+    _goldsetCases = []; var pending = list.length, bad = 0;
+    if (!pending) return;
+    list.forEach(function (f) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var obj = JSON.parse(reader.result);
+          if (obj && obj.format === "cr-goldset-case-v1" && obj.text) _goldsetCases.push(obj);
+          else bad++;
+        } catch (e) { bad++; }
+        if (--pending === 0) {
+          status.textContent = "케이스 " + _goldsetCases.length + "건 로드" + (bad ? " (형식 오류 " + bad + "건 제외)" : "");
+          runBtn.disabled = !_goldsetCases.length;
+        }
+      };
+      reader.readAsText(f);
+    });
+  });
+  runBtn.addEventListener("click", function () {
+    var env = _goldsetEnv();
+    _goldsetDiffs = _goldsetCases.map(function (c) {
+      return Goldset.diffCase(c, Goldset.runCase(c, env));
+    });
+    renderGoldsetResults();
+    expBtn.disabled = false;
+  });
+  expBtn.addEventListener("click", function () {
+    var txt = Goldset.summaryText(_goldsetDiffs, {
+      checksCount: allChecksForType("").length, date: verdictToday()
+    });
+    var blob = new Blob([txt], { type: "text/plain" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "goldset-summary_" + verdictToday() + ".txt";
+    a.click(); URL.revokeObjectURL(url);
+  });
+}
+function renderGoldsetResults() {
+  var box = document.getElementById("goldset-results");
+  var pass = _goldsetDiffs.filter(function (d) { return d.status === "통과"; }).length;
+  var chg = _goldsetDiffs.filter(function (d) { return d.status === "변화"; }).length;
+  var fail = _goldsetDiffs.filter(function (d) { return d.status === "실패"; }).length;
+  var h = '<p class="goldset-sum">통과 <strong>' + pass + "</strong> · 변화 <strong>" + chg +
+    "</strong> · 실패 <strong>" + fail + "</strong> / 총 " + _goldsetDiffs.length +
+    ' <span class="report-actions-note">변화=지식 진화로 알람이 달라진 것일 수 있음 — 내용 확인 후 재저장하면 기준 갱신</span></p>';
+  h += _goldsetDiffs.map(function (d) {
+    var cls = d.status === "통과" ? "gs-pass" : d.status === "변화" ? "gs-change" : "gs-fail";
+    var rows = "";
+    if (!d.detectOk) rows += '<li>유형감지: 기대 <strong>' + esc(d.expectedType || "미확정") + "</strong> ≠ 실제 <strong>" + esc(d.observedType || "미확정") + "</strong></li>";
+    function li(label, arr) { return arr.length ? "<li>" + label + ": " + esc(arr.join(", ")) + "</li>" : ""; }
+    rows += li("모듈 신규활성", d.modules.added) + li("모듈 비활성화", d.modules.removed) +
+      li("부재알람 신규", d.consider.added) + li("부재알람 사라짐", d.consider.removed) +
+      li("반영 신규", d.addressed.added) + li("반영 사라짐", d.addressed.removed);
+    return '<div class="goldset-case ' + cls + '"><div class="gc-head"><span class="gc-status">' + d.status + "</span> " +
+      esc(d.id) + (d.desc ? ' <span class="gc-desc">' + esc(d.desc) + "</span>" : "") + "</div>" +
+      (rows ? "<ul>" + rows + "</ul>" : "") + "</div>";
+  }).join("");
+  box.innerHTML = h;
+}
+initGoldsetPane();
+
 function exportVerdicts() {
   // subdoc_coverage(#3): 부속서류에서 매칭 확인된 항목은 기계 사실로 기록에 남김 —
   // 사람 판정(verdicts)과 별개 키. 데이터 축적 시 "부속서류로 충족되는 항목" 패턴의 원료.
@@ -1122,6 +1223,7 @@ function renderReport() {
     '<label class="reviewer-label">검토자 <input id="reviewer-name" placeholder="이름(코멘트 귀속)" value="' + esc(getReviewer()) + '"></label>' +
     '<button id="report-verdict-export" class="ghost">검토의견 내보내기</button>' +
     '<button id="report-loop-ingest" class="ghost">이 검토를 지식에 반영</button>' +
+    '<button id="report-goldset-snapshot" class="ghost">골드셋 케이스로 저장</button>' +
     '<span class="report-actions-note">누적 판정(코퍼스 ' + loopCorpus.meta.contract_count + '건)에 이 계약서 검토의견을 추가 — 다음 검토에 분포·추천으로 활용</span></div>';
   // 팀 취합(P4): 판정파일이 교환 단위(멱등 병합) — 공유폴더의 팀원 판정파일을 일괄 반영.
   right += '<div class="report-actions team-actions">' +
@@ -1138,6 +1240,8 @@ function renderReport() {
   if (rvIn) rvIn.addEventListener("change", function () { setReviewer(rvIn.value); });
   var rexp = document.getElementById("report-verdict-export");
   if (rexp) rexp.addEventListener("click", exportVerdicts);
+  var gsnap = document.getElementById("report-goldset-snapshot");
+  if (gsnap) gsnap.addEventListener("click", exportGoldsetCase);
   var ring = document.getElementById("report-loop-ingest");
   if (ring) ring.addEventListener("click", function () {
     ingestCurrentToCorpus();

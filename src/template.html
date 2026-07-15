@@ -14,6 +14,7 @@
     <button data-tab="clauses" class="tab">조항별 보기</button>
     <button data-tab="report" class="tab" id="report-tab" disabled>리포트</button>
     <button data-tab="verify" class="tab">검수</button>
+    <button data-tab="goldset" class="tab">골드셋</button>
   </nav>
 </header>
 
@@ -101,6 +102,19 @@
   <section id="pane-report" class="pane">
     <div id="report-body"></div>
     <button onclick="window.print()">인쇄</button>
+  </section>
+
+  <!-- 앱 내장 골드셋 (폐쇄망) — 실계약 케이스 축적·새 버전 회귀 채점 -->
+  <section id="pane-goldset" class="pane">
+    <p class="verify-scope-note">폐쇄망 골드셋: 검토 완료한 실계약을 <strong>케이스로 저장</strong>(리포트 탭 하단 버튼)해 공유폴더에 모으고,
+      새 버전 반입 시 여기서 <strong>일괄 채점</strong>합니다. 반출용 요약에는 계약 본문이 포함되지 않습니다(check id·유형명만).</p>
+    <div class="goldset-bar">
+      <label class="ghost file-btn">케이스 파일 로드(복수)<input id="goldset-files" type="file" accept=".json" multiple hidden></label>
+      <button id="goldset-run" class="primary" disabled>채점 실행</button>
+      <button id="goldset-export" class="ghost" disabled>요약 내보내기(반출용 — 본문 미포함)</button>
+      <span id="goldset-status" class="report-actions-note"></span>
+    </div>
+    <div id="goldset-results"></div>
   </section>
 
   <section id="pane-verify" class="pane">

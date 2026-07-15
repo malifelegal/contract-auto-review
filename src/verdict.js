@@ -54,10 +54,25 @@ var Verdict = (function () {
     return out;
   }
 
+  // 일괄 판정(통과계약 모드): cpIds 중 '미판정'인 것만 verdict로 채움 — 이미 찍은 판정(예외 지정분)은 보존.
+  // 반환: { store, applied } — applied는 실제 채워진 개수.
+  function bulkVerdict(store, cpIds, verdict, date) {
+    if (VERDICTS.indexOf(verdict) === -1) return { store: store || {}, applied: 0 };
+    var next = _clone(store || {});
+    var applied = 0;
+    (cpIds || []).forEach(function (id) {
+      if (next[id] && next[id].verdict) return; // 기판정 보존
+      next[id] = { verdict: verdict, comment: "", date: date || "" };
+      applied++;
+    });
+    return { store: next, applied: applied };
+  }
+
   return {
     VERDICTS: VERDICTS,
     verdictKey: verdictKey,
     setVerdict: setVerdict,
+    bulkVerdict: bulkVerdict,
     verdictSummary: verdictSummary,
     exportVerdicts: exportVerdicts,
     importVerdicts: importVerdicts

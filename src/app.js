@@ -844,6 +844,29 @@ function exportVerdicts() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+// 일괄 판정(통과계약 모드) — 미판정만 채움(기판정=예외 보존은 Verdict.bulkVerdict가 보장).
+function bindBulkVerdict() {
+  function ids(coverages) {
+    return (state.result ? state.result.results : [])
+      .filter(function (r) { return coverages.indexOf(r.coverage) !== -1; })
+      .map(function (r) { return r.cpId; });
+  }
+  function apply(coverages, verdict) {
+    var r = Verdict.bulkVerdict(verdictStore, ids(coverages), verdict, verdictToday());
+    verdictStore = r.store; saveVerdicts();
+    renderClauses(); renderReport();
+    var msg = document.getElementById("bulk-msg");
+    if (msg) msg.textContent = r.applied + "건 " + verdict + " 처리(기판정 보존)";
+  }
+  var b1 = document.getElementById("bulk-consider-na");
+  if (b1) b1.addEventListener("click", function () { apply(["consider"], "해당없음"); });
+  var b2 = document.getElementById("bulk-consider-ok");
+  if (b2) b2.addEventListener("click", function () { apply(["consider"], "이상없음"); });
+  var b3 = document.getElementById("bulk-matched-ok");
+  if (b3) b3.addEventListener("click", function () { apply(["addressed", "verify"], "이상없음"); });
+}
+bindBulkVerdict();
+
 function bindVerdictIO() {
   var exp = document.getElementById("verdict-export");
   if (exp) exp.addEventListener("click", exportVerdicts);

@@ -348,3 +348,6 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 .gs-change { border-left: 4px solid #b9770e; } .gs-change .gc-status { background: #fef5e7; color: #b9770e; }
 .gs-fail { border-left: 4px solid #c0392b; } .gs-fail .gc-status { background: #fdecea; color: #c0392b; }
 
+/* 일괄 판정(통과계약 모드) */
+.bulk-bar { background: #f7f9fc; border: 1px dashed #d5deec; border-radius: 8px; padding: 8px 12px; margin-top: 6px; }
+.bulk-bar .verdict-bar-label { color: #667; font-size: 12.5px; }

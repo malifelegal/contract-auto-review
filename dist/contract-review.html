@@ -354,6 +354,9 @@ td.empty { text-align: center; color: #889; padding: 24px; }
 .gs-change { border-left: 4px solid #b9770e; } .gs-change .gc-status { background: #fef5e7; color: #b9770e; }
 .gs-fail { border-left: 4px solid #c0392b; } .gs-fail .gc-status { background: #fdecea; color: #c0392b; }
 
+/* 일괄 판정(통과계약 모드) */
+.bulk-bar { background: #f7f9fc; border: 1px dashed #d5deec; border-radius: 8px; padding: 8px 12px; margin-top: 6px; }
+.bulk-bar .verdict-bar-label { color: #667; font-size: 12.5px; }
 </style>
 </head>
 <body>
@@ -440,6 +443,14 @@ td.empty { text-align: center; color: #889; padding: 24px; }
         <span class="verdict-bar-label">조항을 눌러 검토항목에 이상없음/검토의견/해당없음을 표시</span>
         <button id="verdict-export" class="ghost">검토의견 내보내기</button>
         <label class="filebtn ghost">불러오기<input id="verdict-import" type="file" accept=".json" hidden></label>
+      </div>
+      <!-- 일괄 판정(통과계약 모드): 예외를 먼저 개별 판정한 뒤 나머지를 한 번에 채움 — 기판정은 보존됨 -->
+      <div class="verdict-bar bulk-bar">
+        <span class="verdict-bar-label">일괄 판정(통과계약 모드) — 예외 항목 먼저 개별 판정 후 사용, 이미 찍은 판정은 보존됨:</span>
+        <button id="bulk-consider-na" class="ghost">미판정 알람 → 전부 해당없음</button>
+        <button id="bulk-consider-ok" class="ghost">미판정 알람 → 전부 이상없음</button>
+        <button id="bulk-matched-ok" class="ghost">미판정 반영·확인 → 전부 이상없음</button>
+        <span id="bulk-msg" class="report-actions-note"></span>
       </div>
       <div class="split">
         <div id="clause-list" class="col"></div>
@@ -1990,10 +2001,25 @@ var Verdict = (function () {
     return out;
   }
 
+  // 일괄 판정(통과계약 모드): cpIds 중 '미판정'인 것만 verdict로 채움 — 이미 찍은 판정(예외 지정분)은 보존.
+  // 반환: { store, applied } — applied는 실제 채워진 개수.
+  function bulkVerdict(store, cpIds, verdict, date) {
+    if (VERDICTS.indexOf(verdict) === -1) return { store: store || {}, applied: 0 };
+    var next = _clone(store || {});
+    var applied = 0;
+    (cpIds || []).forEach(function (id) {
+      if (next[id] && next[id].verdict) return; // 기판정 보존
+      next[id] = { verdict: verdict, comment: "", date: date || "" };
+      applied++;
+    });
+    return { store: next, applied: applied };
+  }
+
   return {
     VERDICTS: VERDICTS,
     verdictKey: verdictKey,
     setVerdict: setVerdict,
+    bulkVerdict: bulkVerdict,
     verdictSummary: verdictSummary,
     exportVerdicts: exportVerdicts,
     importVerdicts: importVerdicts
@@ -3107,6 +3133,29 @@ function exportVerdicts() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+// 일괄 판정(통과계약 모드) — 미판정만 채움(기판정=예외 보존은 Verdict.bulkVerdict가 보장).
+function bindBulkVerdict() {
+  function ids(coverages) {
+    return (state.result ? state.result.results : [])
+      .filter(function (r) { return coverages.indexOf(r.coverage) !== -1; })
+      .map(function (r) { return r.cpId; });
+  }
+  function apply(coverages, verdict) {
+    var r = Verdict.bulkVerdict(verdictStore, ids(coverages), verdict, verdictToday());
+    verdictStore = r.store; saveVerdicts();
+    renderClauses(); renderReport();
+    var msg = document.getElementById("bulk-msg");
+    if (msg) msg.textContent = r.applied + "건 " + verdict + " 처리(기판정 보존)";
+  }
+  var b1 = document.getElementById("bulk-consider-na");
+  if (b1) b1.addEventListener("click", function () { apply(["consider"], "해당없음"); });
+  var b2 = document.getElementById("bulk-consider-ok");
+  if (b2) b2.addEventListener("click", function () { apply(["consider"], "이상없음"); });
+  var b3 = document.getElementById("bulk-matched-ok");
+  if (b3) b3.addEventListener("click", function () { apply(["addressed", "verify"], "이상없음"); });
+}
+bindBulkVerdict();
+
 function bindVerdictIO() {
   var exp = document.getElementById("verdict-export");
   if (exp) exp.addEventListener("click", exportVerdicts);

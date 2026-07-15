@@ -77,3 +77,19 @@ test("importVerdicts: verdicts 없거나 잘못된 값 방어", () => {
   assert.ok(!("X" in v));
   assert.strictEqual(v["Y"].verdict, "이상없음");
 });
+
+// ── 일괄 판정(통과계약 모드) ─────────────────────────────────────
+test("bulkVerdict: 미판정만 채우고 기판정(예외)은 보존한다", () => {
+  let store = V.setVerdict({}, "A-1", "검토의견", "예외 코멘트", "d1"); // 예외 먼저 지정
+  const r = V.bulkVerdict(store, ["A-1", "B-2", "C-3"], "해당없음", "d2");
+  assert.strictEqual(r.applied, 2);                       // B-2, C-3만
+  assert.strictEqual(r.store["A-1"].verdict, "검토의견");  // 예외 보존
+  assert.strictEqual(r.store["A-1"].comment, "예외 코멘트");
+  assert.strictEqual(r.store["B-2"].verdict, "해당없음");
+});
+
+test("bulkVerdict: 잘못된 verdict는 무시(원본 반환)", () => {
+  const r = V.bulkVerdict({}, ["A-1"], "없는판정", "d");
+  assert.strictEqual(r.applied, 0);
+});
+

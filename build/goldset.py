@@ -60,6 +60,9 @@ def score(cases, results):
         for mid in c.get("active_must_include") or []:
             if mid not in active:
                 errs.append(f"모듈 미활성: {mid}가 activeModules에 없음")
+        for mid in c.get("active_must_exclude") or []:
+            if mid in active:
+                errs.append(f"모듈 오활성: {mid}가 activeModules에 있음")
         addressed = set(r.get("addressed") or [])
         for cid in c.get("addressed_must_exclude") or []:
             if cid in addressed:

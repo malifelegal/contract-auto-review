@@ -490,5 +490,7 @@ checks:
     triggers:
       keywords: [SLA, 서비스수준, 가동률, 장애, 서비스 지연]
     absence_check: true
+    # 조건부 부재체크: SLA·서비스수준 어휘가 본문에 있을 때만 부재알람(비IT 일반 용역에서 SLA 누락 오탐 방지 — 표준 하도급 케이스 11 회귀).
+    absence_precondition: [SLA, 서비스수준, 서비스 수준, 장애]
     sources: []
     note: 전자금융감독규정 제60조 제1항 제11호는 품질수준 연1회 평가 의무만 규정 — SLA 배상 수준은 계약 재량

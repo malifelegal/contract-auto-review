@@ -22,9 +22,10 @@ meta:
       activation: strong
     - id: X-CROSS
       name: 국외 당사자·준거법·관할
+      # 범용어 제거: 관할·중재는 국내 계약 분쟁해결 조항에 상존(국외 신호 아님) — 표준 NDA 케이스 14 회귀
       always_on: false
       screening_question: 계약 상대방이 외국 법인·개인이거나, 계약이 영문으로 작성되었거나, 이행지·결제통화가 국외/외화인가?
-      suggest_keywords: [준거법, governing law, 관할, jurisdiction, 중재, arbitration, 영문, English, Agreement, 해외, 국외, 외국, 원천징수, 외화, USD]
+      suggest_keywords: [준거법, governing law, jurisdiction, arbitration, 영문, English, Agreement, 해외, 국외, 외국, 원천징수, 외화, USD]
       activation: confirm
     - id: X-EFIN
       name: 전자금융 정보처리시스템 외주
@@ -53,6 +54,8 @@ meta:
     - id: X-REINS
       name: 재보험
       always_on: false
+      # strong: '산재보험·고용보험' 등의 부분문자열이 '재보험'에 걸리는 오탐 차단 — 진성 재보험 계약은 출재·수재 어휘 동반(표준계약서 케이스 15 회귀)
+      activation: strong
       screening_question: 재보험 출재·수재 또는 공동재보험 협약인가?
       suggest_keywords: [재보험, 출재, 수재, 공동재보험]
     - id: X-RELATED
